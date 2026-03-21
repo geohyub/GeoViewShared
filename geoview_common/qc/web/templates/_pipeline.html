@@ -1,0 +1,55 @@
+{# GeoView QC — Pipeline Tracker Component
+   Visualizes multi-stage QC analysis progress.
+   Required context: stages (list of dicts: name, status, score, max_score, duration_ms)
+   status values: pending, running, done, error, skipped
+#}
+
+{% macro pipeline_tracker(stages, compact=false) %}
+<div class="card mb-3" style="background: var(--gv-navy); border: 1px solid var(--gv-border);">
+    <div class="card-header py-2 px-3 d-flex align-items-center gap-2" style="border-bottom: 1px solid var(--gv-border);">
+        <i class="bi bi-diagram-3" style="color: var(--gv-cyan);"></i>
+        <span style="font-weight: 600; font-size: 0.85rem; color: var(--gv-text);">Analysis Pipeline</span>
+        {% set done_count = stages|selectattr('status', 'equalto', 'done')|list|length %}
+        <span class="ms-auto badge" style="background: var(--gv-slate); color: var(--gv-muted); font-size: 0.7rem;">
+            {{ done_count }}/{{ stages|length }}
+        </span>
+    </div>
+    <div class="card-body p-3">
+        <!-- Progress bar -->
+        {% set pct = (done_count / stages|length * 100) if stages|length > 0 else 0 %}
+        <div class="progress mb-3" style="height: 4px; background: var(--gv-slate);">
+            <div class="progress-bar" style="width: {{ pct|int }}%; background: linear-gradient(90deg, var(--gv-cyan), var(--gv-blue));" role="progressbar"></div>
+        </div>
+
+        <!-- Stage list -->
+        <div class="d-flex flex-wrap gap-2">
+            {% for stage in stages %}
+            {% set icons = {"pending": "bi-circle", "running": "bi-arrow-repeat spin", "done": "bi-check-circle-fill", "error": "bi-x-circle-fill", "skipped": "bi-dash-circle"} %}
+            {% set colors = {"pending": "var(--gv-dim)", "running": "var(--gv-cyan)", "done": "var(--gv-green)", "error": "var(--gv-red)", "skipped": "var(--gv-muted)"} %}
+            {% set s = stage.status|default("pending") %}
+
+            <div class="d-flex align-items-center gap-1 px-2 py-1 rounded"
+                 style="background: var(--gv-slate); font-size: 0.78rem; min-width: {% if compact %}auto{% else %}140px{% endif %};"
+                 title="{{ stage.name }}{% if stage.duration_ms %} ({{ '%.0f'|format(stage.duration_ms) }}ms){% endif %}">
+                <i class="bi {{ icons.get(s, 'bi-circle') }}" style="color: {{ colors.get(s, 'var(--gv-dim)') }}; font-size: 0.85rem;"></i>
+                {% if not compact %}
+                <span style="color: var(--gv-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">
+                    {{ stage.name }}
+                </span>
+                {% endif %}
+                {% if s == 'done' and stage.score is defined %}
+                <span class="ms-auto" style="color: {{ colors.get(s) }}; font-weight: 600; font-size: 0.72rem;">
+                    {{ '%.0f'|format(stage.score) }}
+                </span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; }
+</style>
+{% endmacro %}

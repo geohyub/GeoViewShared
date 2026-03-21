@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ app_name }}{% endblock %} — GeoView QC</title>
+
+    <!-- Pretendard Font -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- GeoView Theme -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/gv-theme.css') }}">
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg" style="background: linear-gradient(135deg, var(--gv-dark) 0%, var(--gv-navy) 100%); border-bottom: 1px solid var(--gv-border);">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="/">
+                <i class="bi bi-check2-circle" style="color: var(--gv-cyan); font-size: 1.3rem;"></i>
+                <span style="font-weight: 700; color: var(--gv-text-bright);">{{ app_name }}</span>
+                <span class="badge" style="background: var(--gv-blue); font-size: 0.65rem; padding: 3px 8px;">QC</span>
+            </a>
+
+            <div class="d-flex align-items-center gap-3">
+                {% block nav_actions %}{% endblock %}
+
+                <!-- App info badge -->
+                <span class="badge" style="background: var(--gv-slate); color: var(--gv-muted); font-size: 0.7rem;">
+                    Port {{ port }}
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="container-fluid px-4 mt-3">
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- Main content -->
+    <main class="container-fluid px-4 py-3">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-2" style="color: var(--gv-dim); font-size: 0.75rem; border-top: 1px solid var(--gv-border);">
+        GeoView QC Suite &copy; 2025-2026 Geoview Co., Ltd.
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+    <script>
+    /* ── GeoView Chart.js Defaults ── */
+    if (typeof Chart !== 'undefined') {
+        Chart.defaults.font.family = "'Pretendard Variable', 'Pretendard', sans-serif";
+        Chart.defaults.font.size = 11;
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
+        Chart.defaults.plugins.legend.labels.pointStyleWidth = 8;
+        Chart.defaults.elements.line.borderWidth = 2;
+        Chart.defaults.elements.point.radius = 0;
+        Chart.defaults.elements.point.hoverRadius = 4;
+        Chart.defaults.scale.grid = { color: 'rgba(255,255,255,0.04)' };
+    }
+
+    /* ── Toast notification helper ── */
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container') ||
+            (() => {
+                const c = document.createElement('div');
+                c.id = 'toast-container';
+                c.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+                c.style.zIndex = '9999';
+                document.body.appendChild(c);
+                return c;
+            })();
+
+        const colors = {
+            success: 'var(--gv-green)', warning: 'var(--gv-orange)',
+            danger: 'var(--gv-red)', info: 'var(--gv-cyan)',
+        };
+
+        const toast = document.createElement('div');
+        toast.className = 'toast show';
+        toast.style.cssText = `background: var(--gv-navy); border-left: 3px solid ${colors[type] || colors.info}; color: var(--gv-text);`;
+        toast.innerHTML = `<div class="toast-body d-flex justify-content-between align-items-center">
+            <span>${message}</span>
+            <button class="btn-close btn-close-white ms-2" onclick="this.closest('.toast').remove()"></button>
+        </div>`;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
+
+    /* ── AJAX helper ── */
+    async function apiCall(url, method = 'GET', data = null) {
+        const opts = { method, headers: { 'Content-Type': 'application/json' } };
+        if (data) opts.body = JSON.stringify(data);
+        try {
+            const res = await fetch(url, opts);
+            const json = await res.json();
+            if (!json.ok) showToast(json.error || 'Error', 'danger');
+            return json;
+        } catch (e) {
+            showToast('Network error: ' + e.message, 'danger');
+            return { ok: false, error: e.message };
+        }
+    }
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

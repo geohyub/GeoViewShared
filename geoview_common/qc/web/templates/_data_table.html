@@ -1,0 +1,98 @@
+<!-- GeoView QC — Data Table Component
+     Sortable, filterable table with status-colored rows.
+
+     Usage: {{ data_table(headers, rows, id="qc-table") }}
+     headers: list of {"key": "col_name", "label": "Display Name", "align": "left|center|right"}
+     rows: list of dicts matching header keys. Optional "_status" key for row coloring.
+-->
+
+{% macro data_table(headers, rows, id="qc-table", sticky_header=true, max_height="500px", searchable=true) %}
+<div class="card" style="background: var(--gv-navy); border: 1px solid var(--gv-border);">
+    {% if searchable %}
+    <div class="card-header py-2 px-3 d-flex align-items-center gap-2" style="border-bottom: 1px solid var(--gv-border);">
+        <i class="bi bi-table" style="color: var(--gv-blue);"></i>
+        <span style="font-weight: 600; font-size: 0.82rem; color: var(--gv-text);">
+            {{ rows|length }} records
+        </span>
+        <div class="ms-auto" style="max-width: 220px;">
+            <input type="text" class="form-control form-control-sm"
+                   placeholder="Search..." id="{{ id }}-search"
+                   oninput="filterTable_{{ id|replace('-','_') }}(this.value)"
+                   style="background: var(--gv-slate); border-color: var(--gv-border); color: var(--gv-text); font-size: 0.78rem;">
+        </div>
+    </div>
+    {% endif %}
+    <div style="{% if max_height %}max-height: {{ max_height }}; overflow-y: auto;{% endif %}">
+        <table class="table table-sm mb-0" id="{{ id }}" style="font-size: 0.8rem;">
+            <thead {% if sticky_header %}style="position: sticky; top: 0; z-index: 1;"{% endif %}>
+                <tr style="background: var(--gv-dark);">
+                    {% for h in headers %}
+                    <th style="color: var(--gv-muted); font-weight: 600; padding: 8px 10px;
+                               text-align: {{ h.align|default('left') }}; white-space: nowrap;
+                               border-bottom: 2px solid var(--gv-border); cursor: pointer;"
+                        onclick="sortTable_{{ id|replace('-','_') }}('{{ h.key }}')">
+                        {{ h.label }} <i class="bi bi-chevron-expand" style="font-size: 0.6rem; opacity: 0.5;"></i>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                {% set row_status = row.get('_status', '') %}
+                {% set row_bg = {
+                    'PASS': 'rgba(56,161,105,0.04)',
+                    'WARN': 'rgba(237,137,54,0.04)',
+                    'FAIL': 'rgba(229,62,62,0.06)',
+                }.get(row_status, 'transparent') %}
+                <tr class="table-row" style="background: {{ row_bg }}; border-bottom: 1px solid var(--gv-border);"
+                    onmouseenter="this.style.background='var(--gv-slate)'"
+                    onmouseleave="this.style.background='{{ row_bg }}'">
+                    {% for h in headers %}
+                    <td style="padding: 6px 10px; color: var(--gv-text); text-align: {{ h.align|default('left') }}; vertical-align: middle;">
+                        {{ row.get(h.key, '') }}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+                {% if not rows %}
+                <tr>
+                    <td colspan="{{ headers|length }}" class="text-center py-4" style="color: var(--gv-muted);">
+                        <i class="bi bi-inbox" style="font-size: 1.5rem;"></i><br>No data
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function filterTable_{{ id|replace('-','_') }}(query) {
+    const rows = document.querySelectorAll('#{{ id }} tbody .table-row');
+    const q = query.toLowerCase();
+    rows.forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+}
+
+(function() {
+    let sortDir = {};
+    window.sortTable_{{ id|replace('-','_') }} = function(key) {
+        sortDir[key] = !(sortDir[key] || false);
+        const tbody = document.querySelector('#{{ id }} tbody');
+        const rows = Array.from(tbody.querySelectorAll('.table-row'));
+        const headers = {{ headers|tojson }};
+        const idx = headers.findIndex(h => h.key === key);
+        if (idx < 0) return;
+        rows.sort((a, b) => {
+            let va = a.children[idx].textContent.trim();
+            let vb = b.children[idx].textContent.trim();
+            const na = parseFloat(va), nb = parseFloat(vb);
+            if (!isNaN(na) && !isNaN(nb)) return sortDir[key] ? na - nb : nb - na;
+            return sortDir[key] ? va.localeCompare(vb) : vb.localeCompare(va);
+        });
+        rows.forEach(r => tbody.appendChild(r));
+    };
+})();
+</script>
+{% endmacro %}

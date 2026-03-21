@@ -1,0 +1,70 @@
+{# GeoView QC — Score Badge Component
+   Circular score display with grade letter and color gradient.
+#}
+
+{% macro score_badge(score, grade="", size=80, show_label=true) %}
+{% set grade_val = grade or ("A" if score >= 90 else "B" if score >= 80 else "C" if score >= 70 else "D" if score >= 60 else "F") %}
+{% set color_map = {"A": "#38A169", "B": "#3182CE", "C": "#ED8936", "D": "#E53E3E", "F": "#718096"} %}
+{% set color = color_map.get(grade_val, "#718096") %}
+{% set bg_map = {"A": "rgba(56,161,105,0.12)", "B": "rgba(49,130,206,0.12)", "C": "rgba(237,137,54,0.12)", "D": "rgba(229,62,62,0.12)", "F": "rgba(113,128,150,0.12)"} %}
+{% set bg = bg_map.get(grade_val, "rgba(113,128,150,0.12)") %}
+
+<div class="d-inline-flex flex-column align-items-center">
+    <div style="
+        width: {{ size }}px;
+        height: {{ size }}px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, {{ bg }}, transparent 70%),
+                    conic-gradient({{ color }} 0% {{ score }}%, var(--gv-slate) {{ score }}% 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    ">
+        <!-- Inner circle -->
+        <div style="
+            width: {{ (size * 0.75)|int }}px;
+            height: {{ (size * 0.75)|int }}px;
+            border-radius: 50%;
+            background: var(--gv-navy);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        ">
+            <span style="font-size: {{ (size * 0.28)|int }}px; font-weight: 800; color: {{ color }}; line-height: 1;">
+                {{ "%.0f"|format(score) }}
+            </span>
+            <span style="font-size: {{ (size * 0.13)|int }}px; color: var(--gv-muted); font-weight: 500;">
+                /100
+            </span>
+        </div>
+    </div>
+    {% if show_label %}
+    <span class="mt-1 badge" style="background: {{ bg }}; color: {{ color }}; font-size: 0.7rem; font-weight: 600;">
+        Grade {{ grade_val }}
+    </span>
+    {% endif %}
+</div>
+{% endmacro %}
+
+
+<!-- Compact inline score (for tables) -->
+{% macro score_inline(score, size="sm") %}
+{% set color = "#38A169" if score >= 80 else "#ED8936" if score >= 50 else "#E53E3E" %}
+<span style="color: {{ color }}; font-weight: 700;">{{ "%.1f"|format(score) }}</span>
+{% endmacro %}
+
+
+<!-- Status pill badge -->
+{% macro status_pill(status) %}
+{% set style_map = {
+    "PASS": "background: var(--gv-green-dim); color: var(--gv-green);",
+    "WARN": "background: var(--gv-orange-dim); color: var(--gv-orange);",
+    "FAIL": "background: var(--gv-red-dim); color: var(--gv-red);",
+    "N/A": "background: var(--gv-slate); color: var(--gv-muted);",
+} %}
+<span class="badge rounded-pill" style="{{ style_map.get(status, style_map['N/A']) }} font-size: 0.72rem; font-weight: 600;">
+    {{ status }}
+</span>
+{% endmacro %}

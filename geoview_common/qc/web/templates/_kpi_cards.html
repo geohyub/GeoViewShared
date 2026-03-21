@@ -1,0 +1,57 @@
+{# GeoView QC — KPI Dashboard Cards Component
+   Adapted from MagQC dashboard.html stat cards.
+   Required context: kpi dict with projects, files, analyzed, avg_score, pass/warn/fail counts
+#}
+
+{% macro kpi_card(icon, label, value, color="var(--gv-cyan)", suffix="") %}
+<div class="col">
+    <div class="card h-100" style="background: var(--gv-navy); border: 1px solid var(--gv-border); border-left: 3px solid {{ color }};">
+        <div class="card-body p-3">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="bi {{ icon }}" style="color: {{ color }}; font-size: 1.1rem;"></i>
+                <span style="color: var(--gv-muted); font-size: 0.78rem; font-weight: 500;">{{ label }}</span>
+            </div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: var(--gv-text-bright); line-height: 1;">
+                {{ value }}<span style="font-size: 0.85rem; color: var(--gv-muted); font-weight: 400;">{{ suffix }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+<!-- KPI Row -->
+<div class="row g-3 mb-4">
+    {{ kpi_card("bi-folder2", "Projects", kpi.projects|default(0)) }}
+    {{ kpi_card("bi-file-earmark", "Files", kpi.files|default(0), "var(--gv-blue)") }}
+    {{ kpi_card("bi-check2-all", "Analyzed", kpi.analyzed|default(0), "var(--gv-green)") }}
+    {{ kpi_card("bi-speedometer2", "Avg Score", "%.1f"|format(kpi.avg_score|default(0)), "var(--gv-purple)", "/100") }}
+</div>
+
+<!-- QC Status Summary Bar -->
+{% if kpi.pass_count is defined or kpi.warn_count is defined or kpi.fail_count is defined %}
+<div class="card mb-4" style="background: var(--gv-navy); border: 1px solid var(--gv-border);">
+    <div class="card-body py-2 px-3 d-flex align-items-center gap-4 flex-wrap">
+        <span style="color: var(--gv-muted); font-size: 0.8rem; font-weight: 500;">QC Status:</span>
+        <span class="d-flex align-items-center gap-1">
+            <span class="badge" style="background: var(--gv-green-dim); color: var(--gv-green);">
+                <i class="bi bi-check-circle"></i> PASS {{ kpi.pass_count|default(0) }}
+            </span>
+        </span>
+        <span class="d-flex align-items-center gap-1">
+            <span class="badge" style="background: var(--gv-orange-dim); color: var(--gv-orange);">
+                <i class="bi bi-exclamation-triangle"></i> WARN {{ kpi.warn_count|default(0) }}
+            </span>
+        </span>
+        <span class="d-flex align-items-center gap-1">
+            <span class="badge" style="background: var(--gv-red-dim); color: var(--gv-red);">
+                <i class="bi bi-x-circle"></i> FAIL {{ kpi.fail_count|default(0) }}
+            </span>
+        </span>
+        {% if kpi.open_issues is defined and kpi.open_issues > 0 %}
+        <span class="ms-auto" style="color: var(--gv-orange); font-size: 0.8rem;">
+            <i class="bi bi-flag"></i> {{ kpi.open_issues }} open issues
+        </span>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
