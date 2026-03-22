@@ -65,10 +65,10 @@ class DataTable(ctk.CTkFrame):
         self._build()
 
     def _build(self):
-        # Header
+        # Header — slightly darker with bold text
         header = ctk.CTkFrame(
-            self, height=36,
-            fg_color=(colors.PRIMARY, colors.PRIMARY),
+            self, height=38,
+            fg_color=(colors.PRIMARY_DARK, colors.PRIMARY_DARK),
             corner_radius=0,
         )
         header.pack(fill="x")
@@ -96,7 +96,7 @@ class DataTable(ctk.CTkFrame):
 
         # Empty state
         self._empty_label = ctk.CTkLabel(
-            self._scroll, text="데이터 없음",
+            self._scroll, text="\ub370\uc774\ud130 \uc5c6\uc74c",
             font=(BASE, 12), text_color=(colors.TEXT_MUTED, colors.DARK_TEXT_MUTED),
         )
         self._empty_label.pack(pady=20)
@@ -151,20 +151,48 @@ class DataTable(ctk.CTkFrame):
             self._add_row_widget(idx, row)
 
     def _add_row_widget(self, idx: int, row: list[str]):
-        """Add a single row widget."""
+        """Add a single row widget with hover, border, and zebra striping."""
         is_even = idx % 2 == 0
         bg = (
             (colors.TABLE_ROW_EVEN, colors.DARK_TABLE_ROW_EVEN) if is_even
             else (colors.TABLE_ROW_ODD, colors.DARK_TABLE_ROW_ODD)
         )
 
+        # Row wrapper (includes bottom border line)
+        row_wrapper = ctk.CTkFrame(
+            self._scroll, fg_color="transparent", corner_radius=0,
+        )
+        row_wrapper.pack(fill="x", pady=0)
+
         frame = ctk.CTkFrame(
-            self._scroll, height=self._row_height,
+            row_wrapper, height=self._row_height,
             fg_color=bg, corner_radius=0,
         )
-        frame.pack(fill="x", pady=0)
+        frame.pack(fill="x")
         frame.pack_propagate(False)
         frame.bind("<Button-1>", lambda e, i=idx: self._select_row(i))
+
+        # Thin bottom border for row separation
+        ctk.CTkFrame(
+            row_wrapper, height=1,
+            fg_color=(colors.TABLE_BORDER, colors.DARK_BORDER),
+            corner_radius=0,
+        ).pack(fill="x")
+
+        # Store original bg for hover restore
+        frame._row_bg = bg
+
+        # Hover highlight (subtle blue tint)
+        def on_enter(e, f=frame, i=idx):
+            if i != self._selected_row:
+                f.configure(fg_color=("#E2ECF5", "#1E2D42"))
+
+        def on_leave(e, f=frame, i=idx):
+            if i != self._selected_row:
+                f.configure(fg_color=f._row_bg)
+
+        frame.bind("<Enter>", on_enter)
+        frame.bind("<Leave>", on_leave)
 
         labels = []
         for j, cell in enumerate(row[:self._n_cols]):
@@ -184,32 +212,31 @@ class DataTable(ctk.CTkFrame):
                 lbl.pack(side="left", expand=True, fill="both", padx=(12 if j == 0 else 6, 6))
 
             lbl.bind("<Button-1>", lambda e, i=idx: self._select_row(i))
+            # Propagate hover events from labels to parent frame
+            lbl.bind("<Enter>", on_enter)
+            lbl.bind("<Leave>", on_leave)
             labels.append(lbl)
 
         self._row_frames.append(frame)
         self._row_labels.append(labels)
 
     def _select_row(self, idx: int):
-        """Handle row selection."""
+        """Handle row selection with clear blue accent."""
         prev = self._selected_row
         _text_default = (colors.TEXT_PRIMARY, colors.DARK_TEXT)
 
         # Deselect previous — restore both bg and text color
         if 0 <= prev < len(self._row_frames):
-            old_even = prev % 2 == 0
-            old_bg = (
-                (colors.TABLE_ROW_EVEN, colors.DARK_TABLE_ROW_EVEN) if old_even
-                else (colors.TABLE_ROW_ODD, colors.DARK_TABLE_ROW_ODD)
-            )
-            self._row_frames[prev].configure(fg_color=old_bg)
+            frame = self._row_frames[prev]
+            frame.configure(fg_color=frame._row_bg)
             for lbl in self._row_labels[prev]:
                 lbl.configure(text_color=_text_default)
 
-        # Select new
+        # Select new — clear blue accent
         self._selected_row = idx
         if 0 <= idx < len(self._row_frames):
             self._row_frames[idx].configure(
-                fg_color=(colors.TABLE_SELECTED_BG, colors.PRIMARY_LIGHT)
+                fg_color=(colors.PRIMARY_LIGHT, "#2D5F8A")
             )
             for lbl in self._row_labels[idx]:
                 lbl.configure(text_color="white")

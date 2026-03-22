@@ -75,7 +75,8 @@ ICONS = {
 _SIDEBAR_W_OPEN = 180
 _SIDEBAR_W_CLOSED = 52
 _HEADER_H = 56
-_STATUS_H = 30
+_STATUS_H = 32
+_NAV_ACCENT_W = 4  # Left accent bar width for active nav item
 
 
 class GeoViewApp:
@@ -181,13 +182,34 @@ class GeoViewApp:
         self._build_statusbar()
 
     def _build_header(self):
-        """Build the enhanced 56px navy header."""
-        self.header = ctk.CTkFrame(
-            self.root, height=_HEADER_H,
-            fg_color=colors.PRIMARY, corner_radius=0,
+        """Build the enhanced 56px navy header with glass effect."""
+        # Outer wrapper for bottom border shadow
+        header_wrap = ctk.CTkFrame(
+            self.root, height=_HEADER_H + 1,
+            fg_color="#2a2a3e", corner_radius=0,
         )
-        self.header.pack(fill="x")
+        header_wrap.pack(fill="x")
+        header_wrap.pack_propagate(False)
+
+        self.header = ctk.CTkFrame(
+            header_wrap, height=_HEADER_H,
+            fg_color=colors.PRIMARY_DARK, corner_radius=0,
+        )
+        self.header.pack(fill="x", side="top")
         self.header.pack_propagate(False)
+
+        # Glass-effect gradient overlay (subtle lighter stripe at top)
+        glass_bar = ctk.CTkFrame(
+            self.header, height=2,
+            fg_color="#ffffff10" if False else colors.PRIMARY_LIGHT,
+            corner_radius=0,
+        )
+        # Thin top highlight line for glass feel
+        glass_line = ctk.CTkFrame(
+            self.header, height=1,
+            fg_color="#3B6FA0", corner_radius=0,
+        )
+        glass_line.pack(fill="x", side="top")
 
         # Left: Sidebar toggle + Icon + Title
         left = ctk.CTkFrame(self.header, fg_color="transparent")
@@ -203,16 +225,16 @@ class GeoViewApp:
             )
             self._sidebar_toggle_btn.pack(side="left", padx=(0, 4))
 
-        # App icon (rounded colored dot with letter)
+        # App icon (rounded colored dot with letter) — slightly larger 36px
         icon_frame = ctk.CTkFrame(
-            left, width=34, height=34,
-            fg_color=colors.ACCENT, corner_radius=17,
+            left, width=36, height=36,
+            fg_color=colors.ACCENT, corner_radius=18,
         )
         icon_frame.pack(side="left", padx=(4, 8))
         icon_frame.pack_propagate(False)
         ctk.CTkLabel(
             icon_frame, text=self.APP_TITLE[0] if self.APP_TITLE else "G",
-            font=(BASE, 14, "bold"), text_color="white",
+            font=(BASE, 15, "bold"), text_color="white",
         ).place(relx=0.5, rely=0.5, anchor="center")
 
         # Title + version badge
@@ -274,7 +296,7 @@ class GeoViewApp:
         self.header_right = right_frame
 
     def _build_sidebar(self, parent, nav_items):
-        """Build collapsible sidebar navigation."""
+        """Build collapsible sidebar navigation with accent bars."""
         w = _SIDEBAR_W_OPEN if self._sidebar_open else _SIDEBAR_W_CLOSED
 
         self._sidebar = ctk.CTkFrame(
@@ -287,17 +309,29 @@ class GeoViewApp:
         self._sidebar.pack(side="left", fill="y")
         self._sidebar.pack_propagate(False)
 
+        # Track accent bars for active state updates
+        self._nav_accent_bars: dict[str, ctk.CTkFrame] = {}
+
         # Nav items
         nav_frame = ctk.CTkFrame(self._sidebar, fg_color="transparent")
-        nav_frame.pack(fill="both", expand=True, pady=(8, 0))
+        nav_frame.pack(fill="both", expand=True, pady=(10, 0))
 
         for item_id, label, icon_key in nav_items:
             # Always try ICONS dict first, then use raw key as fallback
-            icon_char = ICONS.get(icon_key, icon_key[0].upper() if icon_key else "·")
+            icon_char = ICONS.get(icon_key, icon_key[0].upper() if icon_key else "\u00b7")
 
             btn_frame = ctk.CTkFrame(nav_frame, fg_color="transparent", height=44)
-            btn_frame.pack(fill="x", padx=6, pady=1)
+            btn_frame.pack(fill="x", padx=4, pady=2)
             btn_frame.pack_propagate(False)
+
+            # Left accent bar (hidden by default, shown on active)
+            accent_bar = ctk.CTkFrame(
+                btn_frame, width=_NAV_ACCENT_W,
+                fg_color="transparent", corner_radius=2,
+            )
+            accent_bar.pack(side="left", fill="y", padx=(0, 0))
+            accent_bar.pack_propagate(False)
+            self._nav_accent_bars[item_id] = accent_bar
 
             if self._sidebar_open:
                 btn_text = f"  {label}"
@@ -312,36 +346,41 @@ class GeoViewApp:
                 hover_color=(colors.SECTION_BG, "#1E293B"),
                 text_color=(colors.TEXT_SECONDARY, "#A0AEC0"),
                 anchor="w" if self._sidebar_open else "center",
-                corner_radius=8, height=40,
+                corner_radius=10, height=40,
                 command=lambda pid=item_id: self.navigate(pid),
             )
-            btn.pack(fill="x", padx=2)
+            btn.pack(fill="x", padx=(2, 6))
             self._nav_buttons[item_id] = btn
 
-        # Bottom: app info + version
+        # Bottom: app info + version (muted)
         bottom = ctk.CTkFrame(self._sidebar, fg_color="transparent")
         bottom.pack(side="bottom", fill="x", padx=8, pady=10)
 
-        # Divider line
+        # Divider line (separator)
         ctk.CTkFrame(
             bottom, height=1,
             fg_color=(colors.TABLE_BORDER, colors.DARK_BORDER),
         ).pack(fill="x", pady=(0, 8))
 
-        if self._sidebar_open:
-            ctk.CTkLabel(
-                bottom, text=f"{self.APP_TITLE}",
-                font=(BASE, 10, "bold"),
-                text_color=(colors.TEXT_MUTED, colors.DARK_TEXT_MUTED),
-            ).pack(anchor="w")
-            ctk.CTkLabel(
-                bottom, text=f"v{self.APP_VERSION}",
-                font=(BASE, 9),
-                text_color=(colors.TEXT_MUTED, "#4A5568"),
-            ).pack(anchor="w")
+        # Version label — always show in muted text
+        self._sidebar_version_label = ctk.CTkLabel(
+            bottom,
+            text=f"{self.APP_TITLE} v{self.APP_VERSION}" if self._sidebar_open else f"v{self.APP_VERSION}",
+            font=(BASE, 9),
+            text_color=(colors.TEXT_MUTED, "#4A5568"),
+        )
+        self._sidebar_version_label.pack(anchor="w" if self._sidebar_open else "center")
 
     def _build_statusbar(self):
-        """Build enhanced status bar with progress indicator."""
+        """Build enhanced status bar with top border and progress indicator."""
+        # Top border line for visual separation
+        status_border = ctk.CTkFrame(
+            self.root, height=1,
+            fg_color=(colors.TABLE_BORDER, colors.DARK_BORDER),
+            corner_radius=0,
+        )
+        status_border.pack(fill="x")
+
         self.statusbar = ctk.CTkFrame(
             self.root, height=_STATUS_H,
             fg_color=(colors.FOOTER_BG, colors.DARK_BG),
@@ -350,10 +389,10 @@ class GeoViewApp:
         self.statusbar.pack(fill="x")
         self.statusbar.pack_propagate(False)
 
-        # Status text
+        # Status text — slightly larger for readability
         self.status_label = ctk.CTkLabel(
             self.statusbar, text="\uc900\ube44 \uc644\ub8cc",
-            font=(BASE, 10),
+            font=(BASE, 11),
             text_color=(colors.TEXT_SECONDARY, colors.DARK_TEXT_MUTED),
         )
         self.status_label.pack(side="left", padx=12)
@@ -367,16 +406,16 @@ class GeoViewApp:
         self._progress.set(0)
         # Not packed yet — call show_progress() to show
 
-        # Right: copyright + timestamp
+        # Right: copyright + timestamp — slightly larger
         ctk.CTkLabel(
             self.statusbar, text=self.APP_COPYRIGHT,
-            font=(BASE, 9),
+            font=(BASE, 10),
             text_color=(colors.TEXT_MUTED, "#4A5568"),
         ).pack(side="right", padx=12)
 
         self._time_label = ctk.CTkLabel(
             self.statusbar, text="",
-            font=(BASE, 9),
+            font=(BASE, 10),
             text_color=(colors.TEXT_MUTED, "#4A5568"),
         )
         self._time_label.pack(side="right", padx=(0, 8))
@@ -387,7 +426,7 @@ class GeoViewApp:
     # ==================================================================
 
     def navigate(self, page_id: str):
-        """Switch to a page by ID."""
+        """Switch to a page by ID with subtle fade transition."""
         if page_id == self._current_page:
             return
 
@@ -395,24 +434,38 @@ class GeoViewApp:
         if self._current_page and self._current_page in self._pages:
             self._pages[self._current_page].pack_forget()
 
-        # Show new page
+        # Show new page with brief fade effect
         if page_id in self._pages:
-            self._pages[page_id].pack(fill="both", expand=True, padx=0, pady=0)
+            page = self._pages[page_id]
+            page.pack(fill="both", expand=True, padx=0, pady=0)
+            # Brief alpha fade: dim then restore for smooth feel
+            try:
+                page.configure(fg_color=("#D0D4DA", "#151b28"))  # dimmed bg
+                self.root.after(50, lambda p=page: p.configure(fg_color="transparent"))
+            except Exception:
+                pass  # Graceful fallback if configure fails
 
-        # Update nav button styles
+        # Update nav button styles + accent bars
         for bid, btn in self._nav_buttons.items():
+            accent = self._nav_accent_bars.get(bid)
             if bid == page_id:
                 btn.configure(
                     fg_color=(colors.PRIMARY, colors.PRIMARY),
                     text_color=("white", "white"),
                     font=(BASE, 13, "bold"),
                 )
+                # Show left accent bar with app accent color
+                if accent:
+                    accent.configure(fg_color=colors.ACCENT)
             else:
                 btn.configure(
                     fg_color="transparent",
                     text_color=(colors.TEXT_SECONDARY, "#A0AEC0"),
                     font=(BASE, 13),
                 )
+                # Hide accent bar
+                if accent:
+                    accent.configure(fg_color="transparent")
 
         self._current_page = page_id
 
@@ -436,7 +489,7 @@ class GeoViewApp:
 
         for item_id, btn in self._nav_buttons.items():
             label, icon_key = item_map.get(item_id, ("", ""))
-            icon_char = ICONS.get(icon_key, icon_key[0].upper() if icon_key else "·")
+            icon_char = ICONS.get(icon_key, icon_key[0].upper() if icon_key else "\u00b7")
 
             if self._sidebar_open:
                 btn.configure(
@@ -447,6 +500,17 @@ class GeoViewApp:
                 btn.configure(
                     text=icon_char,
                     font=(BASE, 16), anchor="center",
+                )
+
+        # Update sidebar version label
+        if hasattr(self, "_sidebar_version_label"):
+            if self._sidebar_open:
+                self._sidebar_version_label.configure(
+                    text=f"{self.APP_TITLE} v{self.APP_VERSION}",
+                )
+            else:
+                self._sidebar_version_label.configure(
+                    text=f"v{self.APP_VERSION}",
                 )
 
     # ==================================================================

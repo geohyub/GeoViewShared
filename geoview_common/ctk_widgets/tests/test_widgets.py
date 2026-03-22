@@ -61,7 +61,7 @@ class TestBaseAppConstants:
 
     def test_status_height(self):
         from geoview_common.ctk_widgets.base_app import _STATUS_H
-        assert _STATUS_H == 30
+        assert _STATUS_H == 32
 
     def test_geoviewapp_class_defaults(self):
         from geoview_common.ctk_widgets.base_app import GeoViewApp

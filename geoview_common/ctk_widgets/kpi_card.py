@@ -22,8 +22,8 @@ from ..styles import colors
 from ..styles.fonts import BASE
 
 
-_TREND_ICONS = {"up": "\u2191", "down": "\u2193", "flat": "\u2192"}  # ↑ ↓ →
-_TREND_COLORS = {"up": colors.ACCENT, "down": "#E53E3E", "flat": "#718096"}
+_TREND_ICONS = {"up": "\u25b2", "down": "\u25bc", "flat": "\u25ba"}  # ▲ ▼ ►
+_TREND_COLORS = {"up": "#38A169", "down": "#E53E3E", "flat": "#718096"}
 
 
 class KPICard(ctk.CTkFrame):
@@ -38,7 +38,7 @@ class KPICard(ctk.CTkFrame):
         unit: str = "",
         **kwargs,
     ):
-        kwargs.setdefault("height", 80)
+        kwargs.setdefault("height", 88)
         kwargs.setdefault("corner_radius", 10)
         kwargs.setdefault("fg_color", (colors.SURFACE, colors.DARK_SURFACE))
         kwargs.setdefault("border_width", 1)
@@ -47,13 +47,23 @@ class KPICard(ctk.CTkFrame):
         self.pack_propagate(False)
 
         self._accent_color = accent_color
+        self._base_fg = kwargs.get("fg_color", (colors.SURFACE, colors.DARK_SURFACE))
+
+        # Top accent bar (3px gradient-like stripe)
+        top_accent = ctk.CTkFrame(
+            self, height=3, fg_color=accent_color, corner_radius=0,
+        )
+        top_accent.pack(fill="x", side="top")
 
         # Left accent bar
-        accent = ctk.CTkFrame(self, width=4, fg_color=accent_color, corner_radius=0)
+        body_wrap = ctk.CTkFrame(self, fg_color="transparent")
+        body_wrap.pack(fill="both", expand=True)
+
+        accent = ctk.CTkFrame(body_wrap, width=4, fg_color=accent_color, corner_radius=0)
         accent.pack(side="left", fill="y")
 
         # Content
-        inner = ctk.CTkFrame(self, fg_color="transparent")
+        inner = ctk.CTkFrame(body_wrap, fg_color="transparent")
         inner.pack(side="left", fill="both", expand=True, padx=12, pady=8)
 
         # Title row
@@ -61,24 +71,24 @@ class KPICard(ctk.CTkFrame):
         title_row.pack(fill="x")
 
         self._title_label = ctk.CTkLabel(
-            title_row, text=title, font=(BASE, 10),
+            title_row, text=title.upper(), font=(BASE, 9, "bold"),
             text_color=(colors.TEXT_MUTED, colors.DARK_TEXT_MUTED),
             anchor="w",
         )
         self._title_label.pack(side="left")
 
         self._trend_label = ctk.CTkLabel(
-            title_row, text="", font=(BASE, 12),
+            title_row, text="", font=(BASE, 13, "bold"),
             text_color="#718096", anchor="e",
         )
         self._trend_label.pack(side="right")
 
-        # Value row
+        # Value row — larger and bolder
         val_row = ctk.CTkFrame(inner, fg_color="transparent")
         val_row.pack(fill="x", pady=(2, 0))
 
         self._value_label = ctk.CTkLabel(
-            val_row, text=initial_value, font=(BASE, 22, "bold"),
+            val_row, text=initial_value, font=(BASE, 26, "bold"),
             text_color=(colors.TEXT_PRIMARY, colors.DARK_TEXT),
             anchor="w",
         )
@@ -90,6 +100,26 @@ class KPICard(ctk.CTkFrame):
             anchor="w",
         )
         self._unit_label.pack(side="left", padx=(4, 0))
+
+        # Hover effect: slight brightness increase
+        self.bind("<Enter>", self._on_hover_enter)
+        self.bind("<Leave>", self._on_hover_leave)
+
+    def _on_hover_enter(self, event=None):
+        """Subtle brightness increase on hover."""
+        try:
+            self.configure(
+                fg_color=(colors.SECTION_BG, "#3A4A5E"),
+            )
+        except Exception:
+            pass
+
+    def _on_hover_leave(self, event=None):
+        """Restore original background on hover leave."""
+        try:
+            self.configure(fg_color=self._base_fg)
+        except Exception:
+            pass
 
     def set_value(self, value: str, unit: str = "", trend: str = ""):
         """Update displayed value, optional unit and trend."""
@@ -105,4 +135,4 @@ class KPICard(ctk.CTkFrame):
             self._trend_label.configure(text="")
 
     def set_title(self, title: str):
-        self._title_label.configure(text=title)
+        self._title_label.configure(text=title.upper())
