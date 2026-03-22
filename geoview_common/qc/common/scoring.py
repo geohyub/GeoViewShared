@@ -221,3 +221,19 @@ SEISMIC_SCORING_PROFILE = ScoringProfile(
         ScoreComponent("consistency_cv", 5, best=10.0, worst=50.0, higher_is_better=False),
     ],
 )
+
+MBES_SCORING_PROFILE = ScoringProfile(
+    name="MBES QC",
+    components=[
+        # Coverage: percentage of planned survey area with valid soundings
+        ScoreComponent("coverage_pct", 25, best=100.0, worst=80.0, higher_is_better=True),
+        # Crossline: crossline agreement std-dev in meters (lower = better)
+        ScoreComponent("crossline_std_m", 20, best=0.1, worst=1.0, higher_is_better=False),
+        # SVP: sound velocity profile residual in m/s (lower = better)
+        ScoreComponent("svp_residual_ms", 20, best=0.0, worst=5.0, higher_is_better=False),
+        # Motion: motion sensor residual in degrees (lower = better)
+        ScoreComponent("motion_residual_deg", 20, best=0.0, worst=2.0, higher_is_better=False),
+        # Vessel config: static offset verification score (higher = better)
+        ScoreComponent("vessel_config_score", 15, best=100.0, worst=50.0, higher_is_better=True),
+    ],
+)

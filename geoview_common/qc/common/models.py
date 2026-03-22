@@ -33,6 +33,7 @@ class QCDomain(str, Enum):
     MAG = "mag"
     SONAR = "sonar"
     SEISMIC = "seismic"
+    MBES = "mbes"
 
 
 class QCStatus(str, Enum):

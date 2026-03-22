@@ -11,7 +11,7 @@ Provides:
 - Desktop widget wrappers (CTk)
 
 Architecture:
-- Each domain (mag/sonar/seismic) keeps its analysis logic in-place
+- Each domain (mag/sonar/seismic/mbes) keeps its analysis logic in-place
 - This module provides adapters/wrappers for cross-program integration
 - geoview_common/qc/common/ holds shared dataclasses and utilities
 
