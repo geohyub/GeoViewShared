@@ -183,6 +183,10 @@ def compute_score(
 # Pre-built scoring profiles for each domain
 # ---------------------------------------------------------------------------
 
+# NOTE: noise_pp thresholds (0.5 best, 5.0 worst) assume the P-P value has
+# been computed AFTER polynomial detrending (core.calc_noise_stats detrend=True).
+# Raw survey data has 100+ nT P-P from geomagnetic gradient — without detrending,
+# every raw line would score 0/25 on noise.
 MAG_SCORING_PROFILE = ScoringProfile(
     name="MAG QC",
     components=[
