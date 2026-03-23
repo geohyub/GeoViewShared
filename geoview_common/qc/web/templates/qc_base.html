@@ -22,7 +22,7 @@
         <div class="container-fluid px-4">
             <a class="navbar-brand d-flex align-items-center gap-2" href="/">
                 <i class="bi bi-check2-circle" style="color: var(--gv-cyan); font-size: 1.3rem;"></i>
-                <span style="font-weight: 700; color: var(--gv-text-bright);">{{ app_name }}</span>
+                <span style="font-weight: 700; color: var(--gv-text-bright);">{% block app_name_display %}{{ app_name }}{% endblock %}</span>
                 <span class="badge" style="background: var(--gv-blue); font-size: 0.65rem; padding: 3px 8px;">QC</span>
             </a>
 
