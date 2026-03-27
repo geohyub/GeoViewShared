@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="{{ theme|default('dark') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ app_name|default('GeoView') }}{% endblock %}</title>
+
+    {# ── Design Tokens v5.0 ── #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/gv-tokens-v5.css') }}">
+
+    {# ── Tailwind CSS v4 (CDN — production: use CLI build) ── #}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwindcss.config = {
+        theme: {
+            extend: {
+                colors: {
+                    gv: {
+                        bg:      'var(--gv-bg)',
+                        'bg-alt':'var(--gv-bg-alt)',
+                        dark:    'var(--gv-dark)',
+                        navy:    'var(--gv-navy)',
+                        slate:   'var(--gv-slate)',
+                        surface: 'var(--gv-surface)',
+                        accent:  'var(--gv-accent)',
+                        'accent-dim': 'var(--gv-accent-dim)',
+                    },
+                    text: {
+                        primary:  'var(--gv-text)',
+                        bright:   'var(--gv-text-bright)',
+                        muted:    'var(--gv-muted)',
+                        dim:      'var(--gv-dim)',
+                    },
+                    status: {
+                        success: 'var(--gv-success)',
+                        warning: 'var(--gv-warning)',
+                        danger:  'var(--gv-danger)',
+                        info:    'var(--gv-info)',
+                    }
+                },
+                fontFamily: {
+                    sans: ["Pretendard Variable", "Geist", "system-ui", "sans-serif"],
+                    en:   ["Geist", "Pretendard Variable", "system-ui", "sans-serif"],
+                    mono: ["Geist Mono", "JetBrains Mono", "Consolas", "monospace"],
+                },
+                borderRadius: {
+                    gv:    'var(--gv-radius)',
+                    'gv-sm': 'var(--gv-radius-sm)',
+                    'gv-lg': 'var(--gv-radius-lg)',
+                },
+                boxShadow: {
+                    'gv-sm': 'var(--gv-shadow-sm)',
+                    'gv-md': 'var(--gv-shadow-md)',
+                    'gv-lg': 'var(--gv-shadow-lg)',
+                }
+            }
+        }
+    }
+    </script>
+
+    {# ── Alpine.js ── #}
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+
+    {# ── HTMX ── #}
+    <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"></script>
+
+    {# ── Chart.js (optional) ── #}
+    {% block head_extra %}{% endblock %}
+
+    <style>
+        /* Category accent — set per-app */
+        :root { --gv-accent: var(--gv-cat-{{ category|default('processing') }}); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--gv-bg-alt); }
+        ::-webkit-scrollbar-thumb { background: var(--gv-dim); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--gv-muted); }
+
+        /* Selection */
+        ::selection { background: var(--gv-accent-dim); color: var(--gv-text-bright); }
+
+        {% block style_extra %}{% endblock %}
+    </style>
+</head>
+<body class="bg-gv-bg text-text-primary min-h-screen" x-data="{ sidebarOpen: true }">
+
+    {# ── Layout: Sidebar + Main ── #}
+    <div class="flex min-h-screen">
+
+        {# ── Sidebar (optional) ── #}
+        {% block sidebar %}{% endblock %}
+
+        {# ── Main Content ── #}
+        <main class="flex-1 flex flex-col min-w-0">
+
+            {# ── Top Navbar ── #}
+            {% block navbar %}
+            <header class="sticky top-0 z-30 flex items-center justify-between px-6 py-3 border-b"
+                    style="background: var(--gv-bg-alt); border-color: var(--gv-border);">
+                <div class="flex items-center gap-3">
+                    {% block nav_brand %}
+                    <span class="font-en text-lg font-bold" style="color: var(--gv-accent);">
+                        {{ app_name|default('GeoView') }}
+                    </span>
+                    <span class="text-sm text-text-muted">{{ app_version|default('') }}</span>
+                    {% endblock %}
+                </div>
+                <div class="flex items-center gap-4">
+                    {% block nav_actions %}{% endblock %}
+                </div>
+            </header>
+            {% endblock %}
+
+            {# ── Page Content ── #}
+            <div class="flex-1 p-6 overflow-auto">
+                {% block content %}{% endblock %}
+            </div>
+
+            {# ── Footer ── #}
+            {% block footer %}
+            <footer class="px-6 py-3 text-center text-sm text-text-dim border-t"
+                    style="border-color: var(--gv-border);">
+                {{ app_name|default('GeoView') }} {{ app_version|default('') }}
+                &copy; {{ year|default('2026') }} GeoView Suite
+            </footer>
+            {% endblock %}
+        </main>
+    </div>
+
+    {# ── App-specific scripts ── #}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

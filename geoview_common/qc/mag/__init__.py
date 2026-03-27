@@ -27,8 +27,8 @@ from ..common.scoring import compute_score, MAG_SCORING_PROFILE
 def _ensure_magqc_importable():
     """Add MagQC to sys.path if not already importable."""
     magqc_paths = [
-        Path(r"E:\Software\GeoView_Suite\MagQC"),
-        Path(__file__).resolve().parents[4] / "GeoView_Suite" / "MagQC",
+        Path(r"E:\Software\QC\MagQC"),
+        Path(__file__).resolve().parents[4] / "QC" / "MagQC",
     ]
     for p in magqc_paths:
         if p.exists() and str(p) not in sys.path:

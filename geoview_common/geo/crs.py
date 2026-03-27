@@ -46,7 +46,7 @@ def format_dms(dd: float, is_lat: bool = True) -> str:
         direction = "N" if dd >= 0 else "S"
     else:
         direction = "E" if dd >= 0 else "W"
-    return f"{abs(d):d}\u00b0 {m:02d}' {s:06.3f}\" {direction}"
+    return f"{abs(d):d}\u00b0 {m:02d}' {s:08.5f}\" {direction}"
 
 
 def format_dmm(dd: float, is_lat: bool = True) -> str:

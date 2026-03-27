@@ -1,0 +1,64 @@
+{# ── Data Table (Tailwind v5.0) ──
+   Usage:
+     {% include '_data_table_tw.html' with context %}
+   Variables:
+     table_id     — HTML id
+     columns      — list of { key, label, type?, align? }
+     rows         — list of dicts
+     empty_msg    — message when no data
+     hx_sort_url  — optional HTMX sort endpoint
+#}
+<div class="gv-card p-0 overflow-hidden">
+    <table class="gv-table" id="{{ table_id|default('data-table') }}">
+        <thead>
+            <tr>
+                {% for col in columns %}
+                <th class="{% if col.align == 'right' %}text-right{% endif %}"
+                    {% if hx_sort_url %}
+                    hx-get="{{ hx_sort_url }}?sort={{ col.key }}"
+                    hx-target="#{{ table_id|default('data-table') }}"
+                    hx-swap="outerHTML"
+                    class="cursor-pointer hover:text-text-bright"
+                    {% endif %}>
+                    {{ col.label }}
+                </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% if rows %}
+                {% for row in rows %}
+                <tr class="transition-colors">
+                    {% for col in columns %}
+                    <td class="{% if col.type == 'number' %}num{% endif %} {% if col.align == 'right' %}text-right{% endif %}">
+                        {% if col.type == 'badge' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+                                         {% if row[col.key] == 'PASS' %}badge-pass
+                                         {% elif row[col.key] == 'WARN' %}badge-warn
+                                         {% elif row[col.key] == 'FAIL' %}badge-fail
+                                         {% else %}badge-info{% endif %}">
+                                {{ row[col.key] }}
+                            </span>
+                        {% elif col.type == 'link' %}
+                            <a href="{{ row[col.key + '_url'] }}"
+                               class="hover:underline" style="color: var(--gv-accent);">
+                                {{ row[col.key] }}
+                            </a>
+                        {% else %}
+                            {{ row[col.key]|default('—') }}
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="{{ columns|length }}"
+                        class="text-center py-12 text-text-muted">
+                        {{ empty_msg|default('No data available') }}
+                    </td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>

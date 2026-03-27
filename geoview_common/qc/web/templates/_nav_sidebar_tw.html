@@ -1,0 +1,69 @@
+{# ── Sidebar Navigation (Tailwind v5.0) ──
+   Usage:
+     {% set sidebar_items = [
+         {'icon': '🏠', 'label': 'Dashboard', 'url': '/', 'active': true},
+         {'icon': '📁', 'label': 'Projects', 'url': '/projects'},
+         {'divider': true, 'label': 'Tools'},
+         {'icon': '➕', 'label': 'New', 'url': '/new'},
+     ] %}
+     {% include '_nav_sidebar_tw.html' with context %}
+   Variables:
+     app_icon    — emoji/svg for top
+     app_name    — program name
+     app_version — version string
+     sidebar_items — list of nav items
+#}
+<aside class="flex flex-col w-56 border-r shrink-0 transition-all duration-200"
+       style="background: var(--gv-bg-alt); border-color: var(--gv-border);"
+       :class="sidebarOpen ? 'w-56' : 'w-16'"
+       x-data>
+
+    {# Brand #}
+    <div class="flex items-center gap-2.5 px-4 py-4 border-b" style="border-color: var(--gv-border);">
+        <span class="text-xl">{{ app_icon|default('🔧') }}</span>
+        <div x-show="sidebarOpen" x-transition class="min-w-0">
+            <div class="font-en font-bold text-sm truncate" style="color: var(--gv-accent);">
+                {{ app_name|default('GeoView') }}
+            </div>
+            {% if app_version %}
+            <div class="text-xs text-text-dim">{{ app_version }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Navigation Items #}
+    <nav class="flex-1 py-2 overflow-y-auto">
+        {% for item in sidebar_items %}
+            {% if item.divider %}
+                <div class="px-4 pt-4 pb-1 text-xs font-semibold uppercase tracking-wider text-text-dim"
+                     x-show="sidebarOpen" x-transition>
+                    {{ item.label }}
+                </div>
+            {% else %}
+                <a href="{{ item.url|default('#') }}"
+                   class="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-gv-sm text-sm transition-colors
+                          {% if item.active %}font-medium{% endif %}"
+                   style="{% if item.active %}background: var(--gv-accent-dim); color: var(--gv-accent);{% else %}color: var(--gv-text);{% endif %}"
+                   onmouseover="if(!{{ item.active|default(false)|lower }}) this.style.background='var(--gv-bg)'"
+                   onmouseout="if(!{{ item.active|default(false)|lower }}) this.style.background='transparent'">
+                    <span class="text-base w-5 text-center shrink-0">{{ item.icon }}</span>
+                    <span x-show="sidebarOpen" x-transition class="truncate">{{ item.label }}</span>
+                    {% if item.badge %}
+                    <span x-show="sidebarOpen" x-transition
+                          class="ml-auto text-xs px-1.5 rounded-full font-mono"
+                          style="background: var(--gv-accent-dim); color: var(--gv-accent);">
+                        {{ item.badge }}
+                    </span>
+                    {% endif %}
+                </a>
+            {% endif %}
+        {% endfor %}
+    </nav>
+
+    {# Collapse Toggle #}
+    <button @click="sidebarOpen = !sidebarOpen"
+            class="flex items-center justify-center py-3 border-t text-text-muted hover:text-text-primary transition-colors"
+            style="border-color: var(--gv-border);">
+        <span x-text="sidebarOpen ? '◀' : '▶'" class="text-xs"></span>
+    </button>
+</aside>

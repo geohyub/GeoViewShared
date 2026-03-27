@@ -26,8 +26,8 @@ from ..common.scoring import compute_score, SEISMIC_SCORING_PROFILE
 def _ensure_seismicqc_importable():
     """Add SeismicQC_Suite to sys.path if not already importable."""
     seismic_paths = [
-        Path(r"E:\Software\SeismicQC_Suite"),
-        Path(__file__).resolve().parents[4] / "SeismicQC_Suite",
+        Path(r"E:\Software\QC\SeismicQC"),
+        Path(__file__).resolve().parents[4] / "QC" / "SeismicQC",
     ]
     for p in seismic_paths:
         if p.exists() and str(p) not in sys.path:

@@ -1,0 +1,31 @@
+{# ── KPI Card (Tailwind v5.0) ──
+   Usage:
+     {% include '_kpi_card_tw.html' with context %}
+   Variables:
+     icon    — emoji or SVG
+     value   — number
+     label   — description text
+     accent  — optional color override (hex)
+     trend   — optional "+12%" or "-5%" text
+#}
+<div class="gv-card flex items-start gap-4 group"
+     {% if accent %}style="--gv-accent: {{ accent }};"{% endif %}>
+    <div class="flex-shrink-0 w-10 h-10 rounded-gv-sm flex items-center justify-center text-lg"
+         style="background: var(--gv-accent-dim); color: var(--gv-accent);">
+        {{ icon|default('📊') }}
+    </div>
+    <div class="flex-1 min-w-0">
+        <div class="flex items-baseline gap-2">
+            <span class="kpi-value font-mono" style="color: var(--gv-text-bright);">
+                {{ value|default('—') }}
+            </span>
+            {% if trend %}
+            <span class="text-xs font-medium px-1.5 py-0.5 rounded-full
+                         {% if trend.startswith('+') %}badge-pass{% elif trend.startswith('-') %}badge-fail{% else %}badge-info{% endif %}">
+                {{ trend }}
+            </span>
+            {% endif %}
+        </div>
+        <p class="text-sm text-text-muted mt-0.5 truncate">{{ label|default('') }}</p>
+    </div>
+</div>

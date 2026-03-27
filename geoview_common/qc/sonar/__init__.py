@@ -26,8 +26,8 @@ from ..common.scoring import compute_score, SONAR_SCORING_PROFILE
 def _ensure_sonarqc_importable():
     """Add SonarQC to sys.path if not already importable."""
     sonarqc_paths = [
-        Path(r"E:\Software\SonarQC"),
-        Path(__file__).resolve().parents[4] / "SonarQC",
+        Path(r"E:\Software\QC\SonarQC"),
+        Path(__file__).resolve().parents[4] / "QC" / "SonarQC",
     ]
     for p in sonarqc_paths:
         if p.exists() and str(p) not in sys.path:
