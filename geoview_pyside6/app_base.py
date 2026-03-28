@@ -61,6 +61,7 @@ class Sidebar(QFrame):
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(0)
+        self._separator_labels: list[QLabel] = []
 
         # Brand area
         self.brand_frame = QFrame()
@@ -82,8 +83,8 @@ class Sidebar(QFrame):
         self._layout.addWidget(self.brand_frame)
 
         # Navigation label
-        nav_header = QLabel("MENU")
-        nav_header.setStyleSheet(f"""
+        self.nav_header = QLabel("MENU")
+        self.nav_header.setStyleSheet(f"""
             font-size: 10px;
             font-weight: {Font.MEDIUM};
             color: {Dark.DIM};
@@ -91,7 +92,7 @@ class Sidebar(QFrame):
             padding: {Space.BASE}px {Space.LG}px {Space.XS}px;
             background: transparent;
         """)
-        self._layout.addWidget(nav_header)
+        self._layout.addWidget(self.nav_header)
 
         # Navigation buttons
         self._nav_layout = QVBoxLayout()
@@ -148,11 +149,21 @@ class Sidebar(QFrame):
                 background: transparent;
             """)
             self._nav_layout.addWidget(sep)
+            self._separator_labels.append(sep)
         else:
             spacer = QWidget()
             spacer.setFixedHeight(Space.SM)
             spacer.setStyleSheet("background: transparent;")
             self._nav_layout.addWidget(spacer)
+
+    def set_static_text(self, nav_header: str | None = None, status_text: str | None = None, separators: list[str] | None = None):
+        if nav_header is not None:
+            self.nav_header.setText(nav_header)
+        if status_text is not None:
+            self._status_dot.setText(status_text)
+        if separators is not None:
+            for label, text in zip(self._separator_labels, separators):
+                label.setText(text)
 
     def _on_click(self, panel_id: str):
         for btn in self.buttons:
