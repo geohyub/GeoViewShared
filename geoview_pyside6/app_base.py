@@ -5,6 +5,7 @@ GeoView PySide6 — Base Application
 사이드바 + 콘텐츠 + 상태바 레이아웃을 기본 제공.
 """
 
+import logging
 import sys
 from pathlib import Path
 from typing import Optional
@@ -21,6 +22,8 @@ from geoview_pyside6.constants import (
     Category, CATEGORY_THEMES, Dark, Light, Font, Space, Radius
 )
 from geoview_pyside6.themes import apply_theme
+
+_logger = logging.getLogger(__name__)
 
 
 class SidebarButton(QPushButton):
@@ -216,12 +219,18 @@ class GeoViewApp(QMainWindow):
     APP_NAME: str = "GeoView"
     APP_VERSION: str = "v1.0.0"
     CATEGORY: Category = Category.PROCESSING
+    USE_PROJECT_CONTEXT: bool = True  # False로 설정하면 컨텍스트 비활성
 
     def __init__(self):
         super().__init__()
         self._panels: dict[str, QWidget] = {}
         self._panel_order: list[str] = []
         self._current_panel: Optional[str] = None
+
+        # Project context (opt-in, 실패해도 앱 시작에 영향 없음)
+        self.project_context = None  # Optional[ProjectContext]
+        self._context_watcher = None
+        self._project_label: Optional[QLabel] = None
 
         theme = CATEGORY_THEMES[self.CATEGORY]
 
@@ -266,6 +275,10 @@ class GeoViewApp(QMainWindow):
         # Apply theme
         apply_theme(self, "dark", self.CATEGORY)
 
+        # Initialize project context (safe — never crashes)
+        if self.USE_PROJECT_CONTEXT:
+            self._init_project_context()
+
         # Let subclass add panels
         self.setup_panels()
 
@@ -298,6 +311,111 @@ class GeoViewApp(QMainWindow):
 
     def get_panel(self, panel_id: str) -> Optional[QWidget]:
         return self._panels.get(panel_id)
+
+    # ── Project Context ──
+
+    def _init_project_context(self) -> None:
+        """프로젝트 컨텍스트 초기화. 실패해도 앱 시작에 영향 없음."""
+        try:
+            from geoview_common.project_context import ProjectContextStore
+            from geoview_common.project_context.signals import create_watcher
+
+            self._context_store = ProjectContextStore()
+            self.project_context = self._context_store.load_active()
+
+            # 환경변수 폴백: LaunchPad가 GEOVIEW_PROJECT_FILE을 주입한 경우
+            if self.project_context is None:
+                import os
+                env_file = os.environ.get("GEOVIEW_PROJECT_FILE")
+                if env_file and Path(env_file).exists():
+                    from geoview_common.project_context.models import ProjectContext as _PC
+                    self.project_context = _PC.from_file(env_file)
+
+            # Watcher 생성 및 시작
+            self._context_watcher = create_watcher(
+                active_file=self._context_store.active_file,
+                store=self._context_store,
+            )
+            if self._context_watcher:
+                self._context_watcher.setParent(self)
+                self._context_watcher.context_changed.connect(self._on_context_changed_internal)
+                self._context_watcher.start()
+
+            # 상태바에 프로젝트명 표시
+            self._setup_project_status_label()
+            self._update_project_status_label()
+
+            # 경로 유효성 경고
+            if self.project_context:
+                warnings = self.project_context.validate_paths()
+                for w in warnings:
+                    _logger.warning("[%s] 경로 없음: %s", self.APP_NAME, w)
+
+        except ImportError:
+            _logger.debug("geoview_common.project_context 미설치 — 컨텍스트 비활성")
+        except Exception as e:
+            _logger.warning("프로젝트 컨텍스트 초기화 실패: %s", e)
+
+    def _setup_project_status_label(self) -> None:
+        """상태바 우측에 현재 프로젝트명 라벨 추가."""
+        self._project_label = QLabel()
+        self._project_label.setStyleSheet(f"""
+            font-size: {Font.XS}px;
+            color: {Dark.DIM};
+            padding: 0 {Space.SM}px;
+            background: transparent;
+        """)
+        self.status_bar.addPermanentWidget(self._project_label)
+
+    def _update_project_status_label(self) -> None:
+        """프로젝트 라벨 텍스트 갱신."""
+        if not self._project_label:
+            return
+        if self.project_context:
+            name = self.project_context.display_name()
+            self._project_label.setText(f"Project: {name}")
+            self._project_label.setStyleSheet(f"""
+                font-size: {Font.XS}px;
+                color: {Dark.MUTED};
+                padding: 0 {Space.SM}px;
+                background: transparent;
+            """)
+        else:
+            self._project_label.setText("No Active Project")
+
+    def _on_context_changed_internal(self, ctx) -> None:
+        """내부 컨텍스트 변경 핸들러."""
+        old_ctx = self.project_context
+        self.project_context = ctx
+        self._update_project_status_label()
+
+        # 경로 유효성 경고
+        if ctx:
+            warnings = ctx.validate_paths()
+            for w in warnings:
+                _logger.warning("[%s] 경로 없음: %s", self.APP_NAME, w)
+
+        # 서브클래스 훅 호출
+        try:
+            self.on_project_context_changed(ctx, old_ctx)
+        except Exception as e:
+            _logger.warning("[%s] on_project_context_changed 오류: %s", self.APP_NAME, e)
+
+    def on_project_context_changed(self, ctx, old_ctx=None) -> None:
+        """
+        서브클래스 오버라이드 포인트.
+
+        프로젝트 컨텍스트가 변경될 때 호출됨.
+        기본 구현은 아무것도 하지 않음.
+
+        Parameters
+        ----------
+        ctx : ProjectContext or None
+            새로운 프로젝트 컨텍스트. None이면 활성 프로젝트 해제.
+        old_ctx : ProjectContext or None
+            이전 프로젝트 컨텍스트.
+        """
+        pass
 
     @classmethod
     def run(cls):
