@@ -44,6 +44,13 @@ class GVTableModel(QAbstractTableModel):
         if role == Qt.ItemDataRole.TextAlignmentRole:
             return int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
+        # SortRole: numeric columns use raw value for proper numeric sorting
+        if role == Qt.ItemDataRole.UserRole:
+            value = self._data[index.row()][index.column()]
+            if index.column() in self._numeric_cols and isinstance(value, (int, float)):
+                return value
+            return str(value).lower() if value is not None else ""
+
         # FontRole 반환하지 않음 — 전체 폰트 통일 (QApplication 기본 폰트 사용)
         return None
 
@@ -85,6 +92,7 @@ class GVTableView(QTableView):
 
         self._proxy = QSortFilterProxyModel(self)
         self._proxy.setSortCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self._proxy.setSortRole(Qt.ItemDataRole.UserRole)
 
         self._model: GVTableModel | None = None
 
