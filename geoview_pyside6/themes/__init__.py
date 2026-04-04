@@ -146,6 +146,27 @@ def _generate_qss(mode: str = "dark", category: Category = Category.PROCESSING) 
         color: {c.TEXT};
     }}
 
+    #languageButton {{
+        background-color: transparent;
+        color: {c.MUTED};
+        border: 1px solid {c.BORDER};
+        border-radius: {Radius.SM}px;
+        padding: 4px 8px;
+        font-family: {Font.SANS};
+        font-size: {Font.XS}px;
+        font-weight: {Font.MEDIUM};
+    }}
+
+    #languageButton:hover {{
+        background-color: {c.DARK};
+        color: {c.TEXT};
+        border-color: {c.BORDER_H};
+    }}
+
+    #languageButton:pressed {{
+        background-color: {c.NAVY};
+    }}
+
     /* ── Cards ── */
     #gvCard {{
         background-color: {c.NAVY};

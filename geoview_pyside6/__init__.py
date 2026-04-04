@@ -19,3 +19,26 @@ Architecture:
 __version__ = "1.0.0"
 
 from geoview_pyside6.app_base import GeoViewApp, Category
+from geoview_pyside6.i18n import (
+    LanguageManager,
+    get_language_manager,
+    lang,
+    on_lang_change,
+    register_translations,
+    set_lang,
+    t,
+    toggle_lang,
+)
+
+__all__ = [
+    "GeoViewApp",
+    "Category",
+    "LanguageManager",
+    "get_language_manager",
+    "lang",
+    "on_lang_change",
+    "register_translations",
+    "set_lang",
+    "t",
+    "toggle_lang",
+]

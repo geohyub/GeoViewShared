@@ -13,7 +13,7 @@ from typing import Optional
 from PySide6.QtWidgets import (
     QMainWindow, QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QStackedWidget, QLabel, QPushButton, QFrame, QSizePolicy,
-    QStatusBar,
+    QStatusBar, QToolButton, QMenu,
 )
 from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtGui import QFont, QColor, QFontDatabase
@@ -21,6 +21,7 @@ from PySide6.QtGui import QFont, QColor, QFontDatabase
 from geoview_pyside6.constants import (
     Category, CATEGORY_THEMES, Dark, Light, Font, Space, Radius
 )
+from geoview_pyside6.i18n import LanguageManager
 from geoview_pyside6.themes import apply_theme
 
 _logger = logging.getLogger(__name__)
@@ -272,6 +273,12 @@ class GeoViewApp(QMainWindow):
         self.status_bar.setObjectName("gvStatusBar")
         self.setStatusBar(self.status_bar)
 
+        # Language manager (optional, shared infra)
+        self.lang_manager = LanguageManager(parent=self)
+        self._lang_button: Optional[QToolButton] = None
+        self._setup_language_controls()
+        self.lang_manager.language_changed.connect(self._on_language_changed_internal)
+
         # Apply theme
         apply_theme(self, "dark", self.CATEGORY)
 
@@ -299,6 +306,92 @@ class GeoViewApp(QMainWindow):
 
     def add_sidebar_separator(self, label: str = ""):
         self.sidebar.add_separator(label)
+
+    # ── Language / i18n ──
+
+    def _setup_language_controls(self) -> None:
+        """Add a compact KO/EN switch to the status bar.
+
+        Apps without any registered translations can still keep this control;
+        it remains a no-op except for changing the current language state.
+        """
+        self._lang_button = QToolButton(self)
+        self._lang_button.setObjectName("languageButton")
+        self._lang_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._lang_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        self._lang_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+
+        lang_menu = QMenu(self._lang_button)
+        action_ko = lang_menu.addAction("한국어")
+        action_en = lang_menu.addAction("English")
+        action_ko.triggered.connect(lambda: self.set_language("ko"))
+        action_en.triggered.connect(lambda: self.set_language("en"))
+        self._lang_button.setMenu(lang_menu)
+        self._lang_button.clicked.connect(self.toggle_language)
+
+        self.status_bar.addPermanentWidget(self._lang_button)
+        self._update_language_button()
+
+    def _update_language_button(self) -> None:
+        if not self._lang_button:
+            return
+        current = "EN" if self.lang_manager.lang == "en" else "KO"
+        self._lang_button.setText(current)
+        self._lang_button.setToolTip(
+            "Switch language / 언어 전환"
+            if self.lang_manager.lang == "ko"
+            else "언어 전환 / Switch language"
+        )
+
+    def _on_language_changed_internal(self, _lang: str) -> None:
+        self._refresh_language_ui()
+
+    def _refresh_language_ui(self, force: bool = False) -> None:
+        """Refresh language-dependent UI and notify subclasses."""
+        self._update_language_button()
+        try:
+            self.on_language_changed(self.lang_manager.lang, force=force)
+        except TypeError:
+            # Backward compatibility if a subclass overrides with the old signature.
+            try:
+                self.on_language_changed(self.lang_manager.lang)
+            except Exception as exc:
+                _logger.warning("[%s] on_language_changed 오류: %s", self.APP_NAME, exc)
+        except Exception as exc:
+            _logger.warning("[%s] on_language_changed 오류: %s", self.APP_NAME, exc)
+
+    def register_translations(self, translations: dict[str, dict[str, str]] | None, refresh: bool = True) -> bool:
+        """Register app-level translations and optionally refresh the active language.
+
+        Apps can call this from setup_panels() after creating labels/widgets.
+        """
+        changed = self.lang_manager.register(translations)
+        if refresh:
+            self._refresh_language_ui(force=True)
+        return changed
+
+    def set_language(self, lang: str, refresh: bool = True) -> bool:
+        """Set the active app language."""
+        changed = self.lang_manager.set_lang(lang)
+        if refresh and not changed:
+            self._refresh_language_ui(force=True)
+        return changed
+
+    def toggle_language(self) -> bool:
+        """Toggle between Korean and English."""
+        return self.set_language("en" if self.lang_manager.lang == "ko" else "ko")
+
+    def t(self, key: str, default: Optional[str] = None) -> str:
+        """Translate a key using the app-local language registry."""
+        return self.lang_manager.t(key, default)
+
+    def on_language_changed(self, lang: str, force: bool = False) -> None:
+        """Subclass hook called after the app language changes or refreshes.
+
+        Default implementation does nothing. Subclasses can update panel
+        titles, helper text, labels, etc.
+        """
+        return
 
     def _switch_panel(self, panel_id: str):
         """패널 전환."""

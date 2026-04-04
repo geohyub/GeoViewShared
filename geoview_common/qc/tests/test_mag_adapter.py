@@ -15,6 +15,7 @@ for path in (_SHARED_ROOT, _MAGQC_ROOT):
         sys.path.insert(0, str(path))
 
 from geoview_common.qc.mag import analyze_mag_data
+import core as native_core
 
 
 def _build_records(
@@ -101,3 +102,31 @@ def test_mag_adapter_computes_timestamp_stats_without_placeholder():
     assert gap_metric.value >= 1
     assert any(issue.category == "timing" for issue in result.issues)
     assert result.extra["timestamp"]["gap_count"] >= 1
+
+
+def test_mag_adapter_matches_native_core_measurements():
+    records = _build_records(field_fn=lambda idx: 48500.0 + (5.0 if idx % 2 else 0.0), gap_index=20)
+    parsed_result = {
+        "data": records,
+        "integrity": {
+            "totalLines": len(records),
+            "validRecords": len(records),
+            "corruptCount": 0,
+            "recoveredCount": 0,
+            "timeReversals": 0,
+            "timeGaps": 0,
+            "timeDuplicates": 0,
+        },
+    }
+
+    native = native_core.run_full_analysis(records, detrend=False)
+    native_timestamp = native_core.analyze_timestamp_continuity(records).get("stats", {})
+    adapter = analyze_mag_data(records, file_name="native-match.mag", parsed_result=parsed_result, detrend=False)
+
+    measurements = adapter.extra["measurements"]
+    assert measurements["noise_pp"] == native["noise"]["pp"]
+    assert measurements["fourth_diff_exceedance"] == native["fourth_diff"]["stats"]["exceedance_pct"]
+    assert measurements["spike_pct"] == native["spikes"]["spike_pct"]
+    assert measurements["integrity_pct"] == 100.0
+    assert measurements["timestamp_regularity"] == native_timestamp["regularity_pct"]
+    assert adapter.extra["integrity"]["validPct"] == 100.0
