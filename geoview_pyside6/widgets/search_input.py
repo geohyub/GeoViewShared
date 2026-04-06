@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLineEdit, QLabel, QPushButton,
 )
 from PySide6.QtCore import Qt, Signal, QTimer, QEvent
-from geoview_pyside6.constants import Font, Radius, Space
+from geoview_pyside6.constants import Font, Radius, Space, rgba
 from geoview_pyside6.theme_aware import c
 
 
@@ -75,7 +75,7 @@ class SearchInput(QFrame):
             f"  font-size: {Font.SM}px;"
             f"  font-family: \"{Font.SANS}\";"
             f"  padding: 0;"
-            f"  selection-background-color: {c().BLUE}40;"
+            f"  selection-background-color: {rgba(c().BLUE, 0.25)};"
             f"}}"
             f"QLineEdit::placeholder {{"
             f"  color: {c().DIM};"
@@ -211,7 +211,7 @@ class SearchInput(QFrame):
             f"  font-size: {Font.SM}px;"
             f"  font-family: \"{Font.SANS}\";"
             f"  padding: 0;"
-            f"  selection-background-color: {c().BLUE}40;"
+            f"  selection-background-color: {rgba(c().BLUE, 0.25)};"
             f"}}"
             f"QLineEdit::placeholder {{"
             f"  color: {c().DIM};"

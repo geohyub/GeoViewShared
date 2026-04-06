@@ -26,7 +26,7 @@ from PySide6.QtGui import (
 )
 from typing import Any
 
-from geoview_pyside6.constants import Font, Space, Radius, Opacity
+from geoview_pyside6.constants import Font, Space, Radius, rgba
 from geoview_pyside6.theme_aware import c
 
 try:
@@ -296,7 +296,7 @@ def _build_table_qss() -> str:
 
         # Selection
         f"QTableView::item:selected {{"
-        f"  background: {c().CYAN}{Opacity.LOW};"
+        f"  background: {rgba(c().CYAN, 0.1)};"
         f"  color: {c().TEXT_BRIGHT};"
         f"}}"
 

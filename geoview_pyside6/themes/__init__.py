@@ -5,6 +5,7 @@ Complete rewrite. 3-theme QSS: dark / light / beige
 Neutral backgrounds, accent-only color, generous spacing, modern radii.
 """
 
+from geoview_pyside6.constants import rgba
 from geoview_pyside6.constants import (
     Category, CATEGORY_THEMES, Dark, Light, WarmBeige, SkyBlue, Font, Space, Radius
 )
@@ -167,13 +168,13 @@ def _generate_qss(mode: str = "beige", category: Category = Category.PROCESSING)
         font-size: {Font.SM}px;
     }}
     #primaryButton:hover {{
-        background-color: {accent}DD;
+        background-color: {rgba(accent, 0.87)};
     }}
     #primaryButton:pressed {{
-        background-color: {accent}BB;
+        background-color: {rgba(accent, 0.73)};
     }}
     #primaryButton:focus {{
-        border: 2px solid {accent}60;
+        border: 2px solid {rgba(accent, 0.38)};
     }}
     #primaryButton:disabled {{
         background-color: {c.SLATE};
@@ -511,7 +512,7 @@ def _generate_qss(mode: str = "beige", category: Category = Category.PROCESSING)
 
     /* ══════════ STATUS BADGES ══════════ */
     #badgePass {{
-        background-color: {c.GREEN}18;
+        background-color: {rgba(c.GREEN, 0.1)};
         color: {c.GREEN};
         border-radius: {Radius.PILL}px;
         padding: 2px 10px;
@@ -520,7 +521,7 @@ def _generate_qss(mode: str = "beige", category: Category = Category.PROCESSING)
         font-weight: {Font.MEDIUM};
     }}
     #badgeWarn {{
-        background-color: {c.ORANGE}18;
+        background-color: {rgba(c.ORANGE, 0.1)};
         color: {c.ORANGE};
         border-radius: {Radius.PILL}px;
         padding: 2px 10px;
@@ -529,7 +530,7 @@ def _generate_qss(mode: str = "beige", category: Category = Category.PROCESSING)
         font-weight: {Font.MEDIUM};
     }}
     #badgeFail {{
-        background-color: {c.RED}18;
+        background-color: {rgba(c.RED, 0.1)};
         color: {c.RED};
         border-radius: {Radius.PILL}px;
         padding: 2px 10px;
@@ -538,7 +539,7 @@ def _generate_qss(mode: str = "beige", category: Category = Category.PROCESSING)
         font-weight: {Font.MEDIUM};
     }}
     #badgeInfo {{
-        background-color: {c.CYAN}18;
+        background-color: {rgba(c.CYAN, 0.1)};
         color: {c.CYAN};
         border-radius: {Radius.PILL}px;
         padding: 2px 10px;
@@ -641,12 +642,12 @@ def _generate_qss(mode: str = "beige", category: Category = Category.PROCESSING)
         border-radius: 8px;
     }}
     QSlider::handle:horizontal:hover {{
-        background: {accent}DD;
+        background: {rgba(accent, 0.87)};
     }}
 
     /* ══════════ FOCUS STATES ══════════ */
     #sidebarButton:focus {{
-        border-left-color: {accent}40;
+        border-left-color: {rgba(accent, 0.25)};
         background-color: {c.DARK};
     }}
     QComboBox:focus {{

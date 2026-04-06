@@ -92,7 +92,7 @@ class Dark:
     BORDER_H = "#363639"   # hover
 
     # Chart-specific
-    CROSSHAIR    = "#ffffff30"
+    CROSSHAIR    = "#ffffff80"
     CHART_BG     = "#141416"
     CHART_GRID   = "#252528"
     STATS_BOX_BG = "#202024"
@@ -140,7 +140,7 @@ class Light:
     BORDER   = "#eaeaea"
     BORDER_H = "#d4d4d4"
 
-    CROSSHAIR    = "#00000020"
+    CROSSHAIR    = "#00000050"
     CHART_BG     = "#fafafa"
     CHART_GRID   = "#eaeaea"
     STATS_BOX_BG = "#ffffff"
@@ -187,7 +187,7 @@ class SkyBlue:
     BORDER   = "#c8d6e5"   # soft blue border
     BORDER_H = "#a8bcd0"   # hover border
 
-    CROSSHAIR    = "#1a233230"
+    CROSSHAIR    = "#1a233260"
     CHART_BG     = "#f5f8fc"
     CHART_GRID   = "#c8d6e5"
     STATS_BOX_BG = "#f5f8fc"
@@ -234,7 +234,7 @@ class WarmBeige:
     BORDER   = "#d8d0c4"   # warm border
     BORDER_H = "#c4baa8"   # hover border
 
-    CROSSHAIR    = "#2c241830"
+    CROSSHAIR    = "#2c241860"
     CHART_BG     = "#faf6f0"
     CHART_GRID   = "#d8d0c4"
     STATS_BOX_BG = "#faf6f0"
@@ -331,7 +331,14 @@ class Accent:
 # ════════════════════════════════════════════
 
 class Opacity:
-    """투명도 hex 접미어. 사용법: f"{Dark.GREEN}{Opacity.LOW}" → "#10B9811A" """
+    """투명도 hex 접미어.
+
+    WARNING: QSS에서 `f"{c().COLOR}{Opacity.LOW}"` 형태로 사용하면
+    Qt가 #AARRGGBB로 해석하여 의도와 다른 색상이 됩니다.
+    반드시 rgba() 헬퍼를 사용하세요:
+        rgba(c().GREEN, 0.1)   # 올바름
+        f"{c().GREEN}1A"       # 잘못됨 — 사용 금지
+    """
     SUBTLE  = "0D"   # 5%
     LOW     = "1A"   # 10%  — 배지 배경, 선택 영역
     MEDIUM  = "40"   # 25%  — 비활성 아이콘, 보조 테두리
@@ -340,6 +347,22 @@ class Opacity:
     HOVER   = "DD"   # 87%  — 버튼 hover
     PRESSED = "BB"   # 73%  — 버튼 pressed
     FULL    = "FF"   # 100%
+
+
+def rgba(hex_color: str, alpha: float) -> str:
+    """Convert #RRGGBB + alpha(0.0~1.0) → 'rgba(r,g,b,a)' for QSS.
+
+    Qt QSS에서 hex8(#RRGGBBAA)은 #AARRGGBB로 해석되므로,
+    반투명 색상은 반드시 이 함수를 통해 rgba() 형식으로 변환하세요.
+
+    Usage:
+        rgba(c().GREEN, 0.1)   → "rgba(52, 211, 153, 0.1)"
+        rgba(c().RED, 0.25)    → "rgba(229, 72, 77, 0.25)"
+    """
+    r = int(hex_color[1:3], 16)
+    g = int(hex_color[3:5], 16)
+    b = int(hex_color[5:7], 16)
+    return f"rgba({r}, {g}, {b}, {alpha})"
 
 
 # ════════════════════════════════════════════

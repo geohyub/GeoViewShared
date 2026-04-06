@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QLineEdit, QComboBox, QTextEdit, QWidget,
 )
 from PySide6.QtCore import Qt, Signal, QTimer
-from geoview_pyside6.constants import Font, Radius, Space
+from geoview_pyside6.constants import Font, Radius, Space, rgba
 from geoview_pyside6.theme_aware import c
 
 
@@ -88,7 +88,7 @@ class FormField(QFrame):
             f"border-radius: {Radius.SM}px;"
             f"font-size: {Font.SM}px;"
             f"padding: 4px {Space.SM}px;"
-            f"selection-background-color: {c().BLUE}40;"
+            f"selection-background-color: {rgba(c().BLUE, 0.25)};"
         )
 
         if field_type == "combo":

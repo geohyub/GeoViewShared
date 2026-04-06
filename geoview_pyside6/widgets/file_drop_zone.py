@@ -36,7 +36,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from geoview_pyside6.constants import Font, Space, Radius, Opacity
+from geoview_pyside6.constants import Font, Space, Radius, rgba
 from geoview_pyside6.theme_aware import c
 from geoview_pyside6.icons.icon_engine import icon_pixmap
 
@@ -163,7 +163,7 @@ class FileDropZone(QFrame):
         icon_container.setFixedSize(56, 56)
         icon_container.setStyleSheet(f"""
             #dropZoneIconArea {{
-                background: {c().CYAN}{Opacity.LOW};
+                background: {rgba(c().CYAN, 0.1)};
                 border-radius: {Radius.LG}px;
                 border: none;
             }}
@@ -370,7 +370,7 @@ class FileDropZone(QFrame):
                     border-radius: {Radius.LG}px;
                 }}
                 FileDropZone:hover {{
-                    border-color: {c().CYAN}{Opacity.MEDIUM};
+                    border-color: {rgba(c().CYAN, 0.25)};
                 }}
             """)
 
@@ -395,7 +395,7 @@ class FileDropZone(QFrame):
             # Icon area gets stronger accent tint
             self._icon_container.setStyleSheet(f"""
                 #dropZoneIconArea {{
-                    background: {c().CYAN}{Opacity.MEDIUM};
+                    background: {rgba(c().CYAN, 0.25)};
                     border-radius: {Radius.LG}px;
                     border: none;
                 }}
@@ -431,7 +431,7 @@ class FileDropZone(QFrame):
             # Restore icon area
             self._icon_container.setStyleSheet(f"""
                 #dropZoneIconArea {{
-                    background: {c().CYAN}{Opacity.LOW};
+                    background: {rgba(c().CYAN, 0.1)};
                     border-radius: {Radius.LG}px;
                     border: none;
                 }}

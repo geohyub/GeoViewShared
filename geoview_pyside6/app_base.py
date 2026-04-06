@@ -118,12 +118,20 @@ class SidebarButton(QPushButton):
         self._collapsed_mode = collapsed
         if collapsed:
             if self._icon_name:
-                self.setText("")  # icon only (QIcon handles display)
+                self.setText("")
             else:
-                # Unicode fallback: show just the icon character
                 self.setText(self.icon_text if self.icon_text else self.label_text[:1])
             self.setToolTip(self.label_text)
             self.setFixedHeight(38)
+            # Center icon: remove left border offset, symmetric padding
+            self.setStyleSheet(
+                "QPushButton {"
+                "  border-left: none;"
+                "  padding: 8px 0px;"
+                "  margin: 1px 4px;"
+                "  text-align: center;"
+                "}"
+            )
         else:
             if self._icon_name:
                 self.setText(f"  {self.label_text}")
@@ -132,6 +140,7 @@ class SidebarButton(QPushButton):
             else:
                 self.setText(self.label_text)
             self.setToolTip("")
+            self.setStyleSheet("")  # Reset to theme QSS
 
 
 class Sidebar(QFrame):
@@ -434,6 +443,9 @@ class GeoViewApp(QMainWindow):
 
         main_layout.addWidget(self._splitter)
 
+        # Connect sidebar collapse to splitter resize
+        self.sidebar.collapsed_changed.connect(self._on_sidebar_collapsed)
+
         # Restore sidebar collapsed state
         was_collapsed = self._settings.value("sidebar_collapsed", False, type=bool)
         if was_collapsed:
@@ -725,7 +737,15 @@ class GeoViewApp(QMainWindow):
                 try:
                     panel.on_theme_changed()
                 except Exception:
-                    pass  # 패널 개별 오류가 전체를 중단시키지 않도록
+                    pass
+        # Dock 위젯 테마 갱신
+        for dock_id, dock in self._docks.items():
+            widget = dock.widget() if dock else None
+            if widget and hasattr(widget, 'refresh_theme'):
+                try:
+                    widget.refresh_theme()
+                except Exception:
+                    pass
         # 사이드바 브랜드 색상 업데이트
         theme = CATEGORY_THEMES.get(self.CATEGORY, CATEGORY_THEMES[Category.PROCESSING])
         self.sidebar.set_brand(self.APP_NAME, self.APP_VERSION, theme.accent)
@@ -754,6 +774,16 @@ class GeoViewApp(QMainWindow):
             )
         except Exception:
             pass
+
+    def _on_sidebar_collapsed(self, collapsed: bool):
+        """Resize splitter when sidebar collapses/expands."""
+        total = self._splitter.width()
+        if collapsed:
+            self._splitter.setSizes([48, total - 48])
+        else:
+            saved_w = self._settings.value("sidebar_width", 200, type=int)
+            saved_w = max(160, min(300, saved_w))
+            self._splitter.setSizes([saved_w, total - saved_w])
 
     def closeEvent(self, event):
         """Save window geometry and sidebar width on close."""

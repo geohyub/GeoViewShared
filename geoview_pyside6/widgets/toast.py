@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QSize
 from PySide6.QtGui import QColor, QMouseEvent
 
-from geoview_pyside6.constants import Font, Space, Radius, STATUS_ICONS
+from geoview_pyside6.constants import Font, Space, Radius, STATUS_ICONS, rgba
 from geoview_pyside6.theme_aware import c
 
 
@@ -81,7 +81,7 @@ class _CloseLabel(QLabel):
             }}
             QLabel:hover {{
                 color: {color};
-                background: {color}1A;
+                background: {rgba(color, 0.1)};
             }}
         """)
 
@@ -112,10 +112,10 @@ class Toast(QFrame):
     @staticmethod
     def _get_colors() -> dict[str, tuple[str, str]]:
         return {
-            "success": (c().GREEN, f"{c().GREEN}1A"),
-            "warning": (c().ORANGE, f"{c().ORANGE}1A"),
-            "error":   (c().RED, f"{c().RED}1A"),
-            "info":    (c().CYAN, f"{c().CYAN}1A"),
+            "success": (c().GREEN, rgba(c().GREEN, 0.1)),
+            "warning": (c().ORANGE, rgba(c().ORANGE, 0.1)),
+            "error":   (c().RED, rgba(c().RED, 0.1)),
+            "info":    (c().CYAN, rgba(c().CYAN, 0.1)),
         }
 
     _MARGIN_TOP: ClassVar[int] = 16
@@ -159,7 +159,7 @@ class Toast(QFrame):
         card.setStyleSheet(f"""
             QFrame#gv_toast_card {{
                 background: {c().NAVY};
-                border: 1px solid {fg}40;
+                border: 1px solid {rgba(fg, 0.25)};
                 border-left: 3px solid {fg};
                 border-radius: {Radius.SM}px;
                 min-width: 280px;
