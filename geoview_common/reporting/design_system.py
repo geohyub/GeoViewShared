@@ -298,7 +298,7 @@ _register(DocStyle(
     color_accent="4F81BD",        # Steel blue accent
     color_bg_dark="4E81BD",       # Table header fill (exact from real docs)
     color_bg_light="FFFFFF",      # White background
-    color_bg_alt="FFFFFF",        # No alternating rows (clean grid)
+    color_bg_alt="F2F7FB",        # Subtle blue-tint alternating rows
     color_border="000000",        # Black grid borders
     color_table_header_bg="4E81BD",  # Exact match: real docs use 4E81BD
     color_table_header_fg="FFFFFF",
@@ -1074,7 +1074,7 @@ class WordBuilder:
             run.font.color.rgb = _rgb(fg)
             run.bold = True
             if s.table_style in ("grid", "filled"):
-                _cell_margins(cell, top=35, bottom=35, left=108, right=108)
+                _cell_margins(cell, top=45, bottom=45, left=115, right=115)
             else:
                 _cell_margins(cell, top=35, bottom=35, left=70, right=70)
             _valign(cell, "center")
@@ -1098,7 +1098,7 @@ class WordBuilder:
                     run.bold = True
 
                 if s.table_style in ("grid", "filled"):
-                    _cell_margins(cell, top=25, bottom=25, left=108, right=108)
+                    _cell_margins(cell, top=35, bottom=35, left=115, right=115)
                 else:
                     _cell_margins(cell, top=25, bottom=25, left=70, right=70)
                 _valign(cell, "center")
@@ -1106,7 +1106,8 @@ class WordBuilder:
                 if s.table_style == "filled" and r % 2 == 0:
                     _shading(cell, s.color_bg_alt)
                 elif s.table_style == "grid":
-                    pass  # Borders handled at table level
+                    if r % 2 == 0 and s.color_bg_alt.upper() != "FFFFFF":
+                        _shading(cell, s.color_bg_alt)
                 else:  # minimal
                     _cell_border(cell, ["bottom"], sz=1, color=s.color_border)
 

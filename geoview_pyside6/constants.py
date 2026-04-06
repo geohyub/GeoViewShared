@@ -1,8 +1,9 @@
 """
-GeoView PySide6 — Design Constants
-===================================
-gv-tokens-v5.css와 동기화된 색상/폰트/스페이싱 상수.
-웹(CSS)과 데스크톱(QSS)이 동일한 디자인 언어를 공유.
+GeoView PySide6 — Design Constants v6
+======================================
+3-theme system: Ocean Teal (dark) / Clean Light / Warm Beige
+Tokens sourced from: shadcn/ui, GitHub Primer, Vercel Geist, Linear
+All class names & attribute names are STABLE — only values change.
 """
 
 from enum import Enum
@@ -32,13 +33,13 @@ class CategoryTheme:
 
 
 CATEGORY_THEMES = {
-    Category.QC:            CategoryTheme("#10B981", "#1a2f28", "🔍", "품질검사"),
-    Category.PROCESSING:    CategoryTheme("#3B82F6", "#1a2436", "⚙️", "처리"),
-    Category.PREPROCESSING: CategoryTheme("#F59E0B", "#2f2a1a", "🔄", "전처리"),
-    Category.MANAGEMENT:    CategoryTheme("#8B5CF6", "#241a36", "📋", "관리"),
-    Category.VALIDATION:    CategoryTheme("#06B6D4", "#1a2a2f", "✅", "검증"),
-    Category.UTILITIES:     CategoryTheme("#64748B", "#1e2028", "🔧", "유틸"),
-    Category.AI:            CategoryTheme("#F43F5E", "#2f1a20", "🤖", "AI"),
+    Category.QC:            CategoryTheme("#3b82f6", "#3b82f612", "QC", "품질검사"),
+    Category.PROCESSING:    CategoryTheme("#3b82f6", "#3b82f612", "PR", "처리"),
+    Category.PREPROCESSING: CategoryTheme("#fbbf24", "#fbbf2412", "PP", "전처리"),
+    Category.MANAGEMENT:    CategoryTheme("#a78bfa", "#a78bfa12", "MG", "관리"),
+    Category.VALIDATION:    CategoryTheme("#14b8a6", "#14b8a612", "VL", "검증"),
+    Category.UTILITIES:     CategoryTheme("#64748b", "#64748b12", "UT", "유틸"),
+    Category.AI:            CategoryTheme("#fb7185", "#fb718512", "AI", "AI"),
 }
 
 
@@ -47,29 +48,30 @@ CATEGORY_THEMES = {
 # ════════════════════════════════════════════
 
 class Dark:
-    # Surface (darkest → lightest)
-    BG       = "#0A0E17"
-    BG_ALT   = "#111827"
-    DARK     = "#131A2B"
-    NAVY     = "#1A2236"
-    SLATE    = "#1E293B"
-    SURFACE  = "#243044"
+    """Neutral Dark — 순수 중립 그레이 배경 + teal 악센트만."""
+    # Surface — 완전 중립 (Linear/shadcn 스타일, 색조 없음)
+    BG       = "#0c0c0e"   # near-black, 완전 중립
+    BG_ALT   = "#141416"   # sidebar / topbar
+    DARK     = "#1a1a1e"   # input fields, card inner
+    NAVY     = "#202024"   # card background, table header
+    SLATE    = "#28282e"   # hover state, elevated
+    SURFACE  = "#2e2e34"   # popover, tooltip
 
-    # Text
-    TEXT         = "#D1D5DB"
-    TEXT_BRIGHT  = "#F9FAFB"
-    MUTED        = "#6B7280"
-    DIM          = "#4B5563"
+    # Text — 따뜻한 off-white (순백 아님, 눈 피로 감소)
+    TEXT         = "#e4e4e8"   # primary text
+    TEXT_BRIGHT  = "#f4f4f6"   # headings, KPI values
+    MUTED        = "#8e8e96"   # secondary text, legends
+    DIM          = "#5c5c64"   # tertiary, axis labels
 
     # Core Colors
-    BLUE    = "#3B82F6"
-    CYAN    = "#06B6D4"
-    GREEN   = "#10B981"
-    ORANGE  = "#F59E0B"
-    RED     = "#EF4444"
-    PURPLE  = "#8B5CF6"
-    INDIGO  = "#6366F1"
-    ROSE    = "#F43F5E"
+    BLUE    = "#3b82f6"
+    CYAN    = "#14b8a6"    # teal (GeoView accent — 버튼/링크/활성 탭만)
+    GREEN   = "#34d399"    # success / pass
+    ORANGE  = "#fbbf24"    # warning
+    RED     = "#f87171"    # danger / fail
+    PURPLE  = "#a78bfa"
+    INDIGO  = "#6366f1"
+    ROSE    = "#fb7185"
 
     # Semantic
     SUCCESS = GREEN
@@ -78,52 +80,167 @@ class Dark:
     INFO    = CYAN
 
     # Hover states
-    GREEN_H  = "#0ea572"
-    CYAN_H   = "#0891b2"
-    RED_H    = "#c0392b"
-    BLUE_H   = "#2563eb"
-    ORANGE_H = "#d97706"
-    PURPLE_H = "#7c3aed"
+    GREEN_H  = "#6ee7b7"
+    CYAN_H   = "#2dd4bf"
+    RED_H    = "#fca5a5"
+    BLUE_H   = "#60a5fa"
+    ORANGE_H = "#fcd34d"
+    PURPLE_H = "#c4b5fd"
 
-    # Borders
-    BORDER   = "#1F2937"
-    BORDER_H = "#374151"
+    # Borders — 중립 그레이
+    BORDER   = "#252528"   # normal
+    BORDER_H = "#363639"   # hover
 
-    # Shadows (not directly usable in QSS, but for reference)
+    # Chart-specific
+    CROSSHAIR    = "#ffffff30"
+    CHART_BG     = "#141416"
+    CHART_GRID   = "#252528"
+    STATS_BOX_BG = "#202024"
+    STATS_BOX_BORDER = "#363639"
+
+    # Shadows
     SHADOW = "rgba(0, 0, 0, 0.3)"
 
 
 class Light:
-    BG       = "#FAFBFC"
-    BG_ALT   = "#F3F4F6"
-    DARK     = "#E5E7EB"
-    NAVY     = "#D1D5DB"
-    SLATE    = "#F3F4F6"
-    SURFACE  = "#FFFFFF"
+    """Clean Light — Vercel Geist-inspired, crisp white, high contrast."""
+    BG       = "#ffffff"
+    BG_ALT   = "#fafafa"
+    DARK     = "#f5f5f5"   # input bg, subtle card
+    NAVY     = "#f0f0f0"   # card background
+    SLATE    = "#e5e5e5"   # hover, elevated
+    SURFACE  = "#ffffff"   # popover, tooltip
 
-    TEXT         = "#1F2937"
-    TEXT_BRIGHT  = "#111827"
-    MUTED        = "#6B7280"
-    DIM          = "#9CA3AF"
+    TEXT         = "#171717"   # near-black
+    TEXT_BRIGHT  = "#0a0a0a"   # headings
+    MUTED        = "#666666"   # secondary
+    DIM          = "#a3a3a3"   # tertiary
 
-    BLUE    = "#2563EB"
-    CYAN    = "#0891B2"
-    GREEN   = "#059669"
-    ORANGE  = "#D97706"
-    RED     = "#DC2626"
-    PURPLE  = "#7C3AED"
-    INDIGO  = "#4F46E5"
-    ROSE    = "#E11D48"
+    BLUE    = "#0070f3"
+    CYAN    = "#0d9488"    # teal-600 (GeoView marine)
+    GREEN   = "#17c964"
+    ORANGE  = "#f5a623"
+    RED     = "#e5484d"
+    PURPLE  = "#7c3aed"
+    INDIGO  = "#4f46e5"
+    ROSE    = "#e11d48"
 
     SUCCESS = GREEN
     WARNING = ORANGE
     DANGER  = RED
     INFO    = CYAN
 
-    BORDER   = "#E5E7EB"
-    BORDER_H = "#D1D5DB"
+    GREEN_H  = "#13a452"
+    CYAN_H   = "#0f766e"
+    RED_H    = "#c53030"
+    BLUE_H   = "#0060df"
+    ORANGE_H = "#d4901e"
+    PURPLE_H = "#6d28d9"
 
-    SHADOW = "rgba(0, 0, 0, 0.08)"
+    BORDER   = "#eaeaea"
+    BORDER_H = "#d4d4d4"
+
+    CROSSHAIR    = "#00000020"
+    CHART_BG     = "#fafafa"
+    CHART_GRID   = "#eaeaea"
+    STATS_BOX_BG = "#ffffff"
+    STATS_BOX_BORDER = "#eaeaea"
+
+    SHADOW = "rgba(0, 0, 0, 0.06)"
+
+
+class SkyBlue:
+    """Sky Blue — 밝은 하늘색/푸른빛 테마. 시원하고 깔끔."""
+    BG       = "#f0f5fa"   # very pale blue
+    BG_ALT   = "#e6eef6"   # slightly deeper pale blue
+    DARK     = "#dce6f0"   # input bg
+    NAVY     = "#f5f8fc"   # card background (lighter than bg)
+    SLATE    = "#d0dcea"   # hover
+    SURFACE  = "#f5f8fc"   # popover
+
+    TEXT         = "#1a2332"   # dark navy text
+    TEXT_BRIGHT  = "#0d1520"   # headings
+    MUTED        = "#546478"   # secondary
+    DIM          = "#8c9aac"   # tertiary
+
+    BLUE    = "#2563eb"
+    CYAN    = "#0d9488"    # GeoView teal accent
+    GREEN   = "#059669"
+    ORANGE  = "#d97706"
+    RED     = "#dc2626"
+    PURPLE  = "#7c3aed"
+    INDIGO  = "#4f46e5"
+    ROSE    = "#e11d48"
+
+    SUCCESS = GREEN
+    WARNING = ORANGE
+    DANGER  = RED
+    INFO    = CYAN
+
+    GREEN_H  = "#047857"
+    CYAN_H   = "#0f766e"
+    RED_H    = "#b91c1c"
+    BLUE_H   = "#1d4ed8"
+    ORANGE_H = "#b45309"
+    PURPLE_H = "#6d28d9"
+
+    BORDER   = "#c8d6e5"   # soft blue border
+    BORDER_H = "#a8bcd0"   # hover border
+
+    CROSSHAIR    = "#1a233230"
+    CHART_BG     = "#f5f8fc"
+    CHART_GRID   = "#c8d6e5"
+    STATS_BOX_BG = "#f5f8fc"
+    STATS_BOX_BORDER = "#c8d6e5"
+
+    SHADOW = "rgba(30, 60, 100, 0.06)"
+
+
+class WarmBeige:
+    """Warm Beige — paper-like, minimal eye strain, teal accent."""
+    BG       = "#f5f0e8"
+    BG_ALT   = "#ede8df"
+    DARK     = "#e8e3da"   # input bg
+    NAVY     = "#faf6f0"   # card background (lighter than bg)
+    SLATE    = "#e0dbd2"   # hover
+    SURFACE  = "#faf6f0"   # popover
+
+    TEXT         = "#2c2418"   # warm dark brown
+    TEXT_BRIGHT  = "#1a1208"   # headings
+    MUTED        = "#6b5e4e"   # secondary
+    DIM          = "#9e9282"   # tertiary
+
+    BLUE    = "#4f6df5"
+    CYAN    = "#0d9488"    # teal (GeoView marine)
+    GREEN   = "#059669"
+    ORANGE  = "#d97706"
+    RED     = "#dc2626"
+    PURPLE  = "#7c3aed"
+    INDIGO  = "#4f46e5"
+    ROSE    = "#e11d48"
+
+    SUCCESS = GREEN
+    WARNING = ORANGE
+    DANGER  = RED
+    INFO    = CYAN
+
+    GREEN_H  = "#047857"
+    CYAN_H   = "#0f766e"
+    RED_H    = "#b91c1c"
+    BLUE_H   = "#3b5ee0"
+    ORANGE_H = "#b45309"
+    PURPLE_H = "#6d28d9"
+
+    BORDER   = "#d8d0c4"   # warm border
+    BORDER_H = "#c4baa8"   # hover border
+
+    CROSSHAIR    = "#2c241830"
+    CHART_BG     = "#faf6f0"
+    CHART_GRID   = "#d8d0c4"
+    STATS_BOX_BG = "#faf6f0"
+    STATS_BOX_BORDER = "#d8d0c4"
+
+    SHADOW = "rgba(100, 80, 50, 0.06)"
 
 
 # ════════════════════════════════════════════
@@ -131,19 +248,19 @@ class Light:
 # ════════════════════════════════════════════
 
 class Font:
-    # Font families — 전부 Pretendard 통일
-    SANS = "Pretendard"
-    EN   = "Pretendard"
-    MONO = "Pretendard"
+    # Font families — Pretendard: modern Korean UI font (fallback chain)
+    SANS = "Pretendard, 'Wanted Sans Std', -apple-system, 'Segoe UI', sans-serif"
+    EN   = "Pretendard, 'Wanted Sans Std', -apple-system, 'Segoe UI', sans-serif"
+    MONO = "'JetBrains Mono', Consolas, 'Cascadia Code', monospace"
 
-    # Sizes (px) — 가독성과 절제의 균형
+    # Sizes (px) — 업계 표준 스케일 (Inter/Geist 기준)
     XS   = 11
-    SM   = 13
-    BASE = 14
-    MD   = 15
-    LG   = 17
-    XL   = 22
-    XXL  = 26
+    SM   = 12
+    BASE = 13
+    MD   = 14
+    LG   = 16
+    XL   = 20
+    XXL  = 24
     XXXL = 30
 
     # Weights
@@ -152,6 +269,23 @@ class Font:
     SEMIBOLD = 600
     BOLD     = 700
     BLACK    = 900
+
+    # Line heights (multiplier)
+    LINE_XS   = 1.3
+    LINE_SM   = 1.4
+    LINE_BASE = 1.5
+    LINE_LG   = 1.4
+    LINE_XL   = 1.3
+    LINE_XXL  = 1.2
+
+    # Letter-spacing (per size tier — larger text tighter, smaller text wider)
+    TRACK_XS   = "0.5px"    # 11px — wider (captions, badges)
+    TRACK_SM   = "0.2px"    # 13px — slightly wider
+    TRACK_BASE = "0px"      # 14px — normal
+    TRACK_LG   = "-0.2px"   # 17px — slightly tight
+    TRACK_XL   = "-0.5px"   # 22px — tight (subheadings)
+    TRACK_XXL  = "-0.8px"   # 26px — tighter (main headings)
+    TRACK_HERO = "-1.5px"   # 30px+ — very tight (hero text)
 
 
 # ════════════════════════════════════════════
@@ -174,10 +308,11 @@ class Space:
 # ════════════════════════════════════════════
 
 class Radius:
+    XS   = 4
     SM   = 6
-    BASE = 10
-    LG   = 14
-    XL   = 18
+    BASE = 8     # 업계 표준 기본값 (8px)
+    LG   = 12    # 카드, 패널
+    XL   = 16    # 모달, 큰 컨테이너
     PILL = 9999
 
 
@@ -189,6 +324,35 @@ class Accent:
     GOLD       = "#D4A843"
     GOLD_HOVER = "#E0B854"
     GOLD_DIM   = "#D4A84340"
+
+
+# ════════════════════════════════════════════
+# Opacity (hex suffix for color strings)
+# ════════════════════════════════════════════
+
+class Opacity:
+    """투명도 hex 접미어. 사용법: f"{Dark.GREEN}{Opacity.LOW}" → "#10B9811A" """
+    SUBTLE  = "0D"   # 5%
+    LOW     = "1A"   # 10%  — 배지 배경, 선택 영역
+    MEDIUM  = "40"   # 25%  — 비활성 아이콘, 보조 테두리
+    HIGH    = "80"   # 50%  — 포커스 링, 오버레이
+    HEAVY   = "BF"   # 75%  — 강조 배경
+    HOVER   = "DD"   # 87%  — 버튼 hover
+    PRESSED = "BB"   # 73%  — 버튼 pressed
+    FULL    = "FF"   # 100%
+
+
+# ════════════════════════════════════════════
+# Device Status Colors (PortDetector/Network)
+# ════════════════════════════════════════════
+
+class DeviceColors:
+    """네트워크 디바이스 상태 색상 (PortDetector 등)."""
+    CONNECTED    = "#06d6a0"
+    DISCONNECTED = "#ef476f"
+    DELAYED      = "#ffd166"
+    FILTERED     = "#ffd166"
+    UNKNOWN      = "#6a6a8a"
 
 
 # ════════════════════════════════════════════
@@ -214,12 +378,13 @@ STATUS_ICONS = {
 TABLE_HEADER_STYLE = f"""
     QHeaderView::section {{
         background: {Dark.NAVY};
-        color: {Dark.MUTED};
+        color: {Dark.DIM};
         font-size: {Font.XS}px;
-        font-weight: {Font.MEDIUM};
+        font-weight: {Font.SEMIBOLD};
         border: none;
         border-bottom: 1px solid {Dark.BORDER};
-        padding: 6px 8px;
+        padding: 8px 12px;
+        letter-spacing: 0.3px;
     }}
 """
 
@@ -229,30 +394,33 @@ TABLE_STYLE = f"""
         alternate-background-color: {Dark.BG_ALT};
         color: {Dark.TEXT};
         border: 1px solid {Dark.BORDER};
-        border-radius: {Radius.SM}px;
-        font-size: {Font.XS}px;
+        border-radius: {Radius.BASE}px;
+        font-size: {Font.SM}px;
         gridline-color: {Dark.BORDER};
     }}
     QTableWidget::item {{
-        padding: 4px 8px;
+        padding: 6px 12px;
     }}
     QTableWidget::item:selected {{
         background: {Dark.SLATE};
+    }}
+    QTableWidget::item:hover {{
+        background: {Dark.DARK};
     }}
     {TABLE_HEADER_STYLE}
 """
 
 BTN_PRIMARY = f"""
     QPushButton {{
-        background: {Dark.GREEN};
-        color: {Dark.BG};
+        background: {Dark.CYAN};
+        color: #ffffff;
         border: none;
-        border-radius: {Radius.SM}px;
+        border-radius: {Radius.BASE}px;
         font-size: {Font.SM}px;
-        font-weight: {Font.SEMIBOLD};
-        padding: 6px 16px;
+        font-weight: {Font.MEDIUM};
+        padding: 7px 18px;
     }}
-    QPushButton:hover {{ background: {Dark.GREEN_H}; }}
+    QPushButton:hover {{ background: {Dark.CYAN_H}; }}
     QPushButton:disabled {{
         background: {Dark.SLATE};
         color: {Dark.DIM};
@@ -264,9 +432,9 @@ BTN_SECONDARY = f"""
         background: transparent;
         color: {Dark.MUTED};
         border: 1px solid {Dark.BORDER};
-        border-radius: {Radius.SM}px;
+        border-radius: {Radius.BASE}px;
         font-size: {Font.SM}px;
-        padding: 6px 16px;
+        padding: 7px 18px;
     }}
     QPushButton:hover {{
         background: {Dark.DARK};
@@ -280,9 +448,9 @@ BTN_DANGER = f"""
         background: {Dark.RED};
         color: white;
         border: none;
-        border-radius: {Radius.SM}px;
+        border-radius: {Radius.BASE}px;
         font-size: {Font.XS}px;
-        padding: 4px 12px;
+        padding: 5px 14px;
     }}
     QPushButton:hover {{ background: {Dark.RED_H}; }}
 """

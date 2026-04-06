@@ -2,6 +2,7 @@
 Status Badge Widget
 ====================
 PASS/WARN/FAIL/INFO 상태를 색상 배지로 표시.
+색맹 접근성을 위해 상태 아이콘 프리픽스 지원.
 """
 
 from PySide6.QtWidgets import QLabel
@@ -13,9 +14,10 @@ class StatusBadge(QLabel):
     상태 배지.
 
     Usage:
-        badge = StatusBadge("PASS")
-        badge = StatusBadge("FAIL")
-        badge = StatusBadge("A", badge_type="grade")
+        badge = StatusBadge("PASS")              # shows "✓ PASS"
+        badge = StatusBadge("FAIL")              # shows "✗ FAIL"
+        badge = StatusBadge("A", badge_type="grade")  # shows "A" (no icon)
+        badge = StatusBadge("PASS", show_icon=False)  # shows "PASS" (icon disabled)
     """
 
     STYLE_MAP = {
@@ -29,14 +31,25 @@ class StatusBadge(QLabel):
         "D": "badgeFail",
     }
 
-    def __init__(self, text: str = "", parent=None):
+    ICON_MAP = {
+        "PASS": "\u2713",  # checkmark
+        "WARN": "\u26A0",  # warning sign
+        "FAIL": "\u2717",  # ballot x
+        "INFO": "\u2139",  # information source
+    }
+
+    def __init__(self, text: str = "", parent=None, *, show_icon: bool = True):
+        self._show_icon = show_icon
         super().__init__(text, parent)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.update_status(text)
 
     def update_status(self, text: str):
-        self.setText(text)
-        obj_name = self.STYLE_MAP.get(text.upper(), "badgeInfo")
+        key = text.upper()
+        icon = self.ICON_MAP.get(key)
+        display = f"{icon} {text}" if self._show_icon and icon else text
+        self.setText(display)
+        obj_name = self.STYLE_MAP.get(key, "badgeInfo")
         self.setObjectName(obj_name)
         # Force style refresh
         self.style().unpolish(self)

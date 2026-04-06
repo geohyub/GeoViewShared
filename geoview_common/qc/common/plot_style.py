@@ -142,9 +142,13 @@ def apply_style(
         spine.set_color(grid_color)
         spine.set_linewidth(0.5)
 
+    # Remove top/right spines (clean style)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
     # Grid
     if grid:
-        ax.grid(True, alpha=0.3, color=grid_color, linewidth=0.5)
+        ax.grid(True, alpha=0.25, color=grid_color, linewidth=0.5, linestyle="--")
     else:
         ax.grid(False)
 
@@ -161,7 +165,7 @@ def apply_rcparams(dark: bool = False) -> None:
         "legend.fontsize": 9,
         "figure.titlesize": 14,
         "figure.dpi": 150,
-        "savefig.dpi": 250,
+        "savefig.dpi": 300,
         "savefig.bbox": "tight",
         "savefig.pad_inches": 0.1,
         "axes.prop_cycle": plt.cycler(color=PALETTE),
@@ -181,7 +185,7 @@ def apply_rcparams(dark: bool = False) -> None:
 def save_figure(
     fig: plt.Figure,
     path: str | Path,
-    dpi: int = 250,
+    dpi: int = 300,
     transparent: bool = False,
 ) -> Path:
     """Save figure with GeoView defaults.
@@ -211,3 +215,15 @@ def status_color(status: str) -> str:
 def grade_color(grade: str) -> str:
     """Get color for a grade letter."""
     return GRADE_COLORS.get(grade, GRAY)
+
+
+def get_figure_size(aspect: str = "wide") -> tuple[float, float]:
+    """차트 크기 반환 (inches). wide=(14, 4.5), square=(8, 8), tall=(8, 12)."""
+    sizes = {"wide": (14, 4.5), "square": (8, 8), "tall": (8, 12), "compact": (10, 3.5)}
+    return sizes.get(aspect, sizes["wide"])
+
+def add_toolbar(canvas, parent=None):
+    """Matplotlib FigureCanvas에 NavigationToolbar 부착."""
+    from matplotlib.backends.backend_qtagg import NavigationToolbar2QT
+    toolbar = NavigationToolbar2QT(canvas, parent)
+    return toolbar

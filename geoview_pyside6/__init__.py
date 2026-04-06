@@ -16,9 +16,10 @@ Architecture:
       └── StatusBar (포트/상태/단축키 힌트)
 """
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
 from geoview_pyside6.app_base import GeoViewApp, Category
+from geoview_pyside6.busy import busy_cursor, BusyGuard
 from geoview_pyside6.i18n import (
     LanguageManager,
     get_language_manager,
@@ -33,6 +34,8 @@ from geoview_pyside6.i18n import (
 __all__ = [
     "GeoViewApp",
     "Category",
+    "busy_cursor",
+    "BusyGuard",
     "LanguageManager",
     "get_language_manager",
     "lang",

@@ -87,8 +87,29 @@ TABLE_SELECTED_BG = PRIMARY_LIGHT
 TABLE_SELECTED_FG = "#FFFFFF"
 TABLE_BORDER = "#CBD5E0"
 
-# --- Chart Colors (5-color palette) ---
-CHART_PALETTE = ["#2D5F8A", "#38A169", "#E53E3E", "#ED8936", "#805AD5"]
+# --- Chart Colors (8-color palette) ---
+CHART_PALETTE = [
+    "#2D5F8A",  # Blue (primary)
+    "#38A169",  # Green (accent)
+    "#E05252",  # Red (softer)
+    "#ED8936",  # Orange (warm)
+    "#7C5DC7",  # Purple
+    "#D97706",  # Amber
+    "#0891B2",  # Teal
+    "#6D5A8F",  # Muted violet
+]
+
+# Colorblind-safe palette (Deuteranopia/Protanopia friendly)
+CHART_PALETTE_COLORBLIND = [
+    "#0077BB",  # Blue
+    "#33BBEE",  # Cyan
+    "#009988",  # Teal
+    "#EE7733",  # Orange
+    "#CC3311",  # Red
+    "#EE3377",  # Magenta
+    "#BBBBBB",  # Grey
+    "#332288",  # Indigo
+]
 
 # --- Dark Theme Overrides ---
 DARK_BG = "#1A202C"
