@@ -44,8 +44,11 @@ class KPICard(QFrame):
             icon_label.setFixedSize(44, 44)
             icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-            # Detect Lucide SVG name vs emoji/unicode
-            if icon.isascii() and icon.replace("-", "").replace("_", "").isalpha():
+            # Detect Lucide SVG name vs emoji/unicode/single-letter text
+            # Single characters (len==1) are always text labels, not SVG names.
+            if (len(icon) > 1
+                    and icon.isascii()
+                    and icon.replace("-", "").replace("_", "").isalpha()):
                 # Short ASCII string like "star", "check-circle" → render SVG
                 pxm = icon_pixmap(icon, 24, _accent)
                 icon_label.setPixmap(pxm)

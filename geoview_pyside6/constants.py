@@ -383,14 +383,14 @@ class DeviceColors:
 # ════════════════════════════════════════════
 
 STATUS_ICONS = {
-    "PASS": "\u2713",      # ✓
-    "WARNING": "\u26A0",   # ⚠
-    "FAIL": "\u2717",      # ✗
-    "N/A": "\u2014",       # —
-    "INFO": "\u2139",      # ℹ
-    "DONE": "\u2713",      # ✓
-    "ERROR": "\u2717",     # ✗
-    "RUNNING": "\u25B6",   # ▶
+    "PASS": "V",           # checkmark (ASCII-safe)
+    "WARNING": "!",        # warning (ASCII-safe)
+    "FAIL": "X",           # cross (ASCII-safe)
+    "N/A": "-",            # dash (ASCII-safe)
+    "INFO": "i",           # info (ASCII-safe)
+    "DONE": "V",           # checkmark (ASCII-safe)
+    "ERROR": "X",          # cross (ASCII-safe)
+    "RUNNING": ">",        # play (ASCII-safe)
 }
 
 

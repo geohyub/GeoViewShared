@@ -34,7 +34,7 @@ def _generate_qss(mode: str = "beige", category: Category = Category.PROCESSING)
        ══════════════════════════════════════════ */
 
     /* ── Global Reset ── */
-    QMainWindow, QWidget {{
+    QMainWindow {{
         background-color: {c.BG};
         color: {c.TEXT};
         font-family: {Font.SANS};
@@ -42,9 +42,19 @@ def _generate_qss(mode: str = "beige", category: Category = Category.PROCESSING)
         line-height: 1.5;
     }}
 
+    QWidget {{
+        color: {c.TEXT};
+        font-family: {Font.SANS};
+        font-size: {Font.BASE}px;
+    }}
+
     QLabel {{
         background: transparent;
         color: {c.TEXT};
+    }}
+
+    QFrame {{
+        background: transparent;
     }}
 
     /* ══════════ SIDEBAR ══════════ */

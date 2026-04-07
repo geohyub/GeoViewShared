@@ -77,7 +77,7 @@ class _NotificationItem(QFrame):
         level = data.get("level", "info")
         color = _level_color(level)
 
-        dot = QLabel("\u25CF")  # filled circle
+        dot = QLabel("*")  # dot indicator (ASCII-safe)
         dot.setFixedSize(16, 16)
         dot.setAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignTop)
         dot.setStyleSheet(f"""
@@ -176,16 +176,16 @@ class NotificationCenter(QFrame):
         root.setSpacing(0)
 
         # ── Header ──
-        header = QFrame()
-        header.setFixedHeight(48)
-        header.setStyleSheet(f"""
+        self._header = QFrame()
+        self._header.setFixedHeight(48)
+        self._header.setStyleSheet(f"""
             QFrame {{
                 background: {c().BG_ALT};
                 border: none;
                 border-bottom: 1px solid {c().BORDER};
             }}
         """)
-        h_layout = QHBoxLayout(header)
+        h_layout = QHBoxLayout(self._header)
         h_layout.setContentsMargins(Space.MD, 0, Space.SM, 0)
         h_layout.setSpacing(Space.SM)
 
@@ -257,7 +257,7 @@ class NotificationCenter(QFrame):
         close_btn.clicked.connect(self._slide_out)
         h_layout.addWidget(close_btn)
 
-        root.addWidget(header)
+        root.addWidget(self._header)
 
         # ── Scroll area ──
         self._scroll = QScrollArea()
@@ -326,6 +326,35 @@ class NotificationCenter(QFrame):
         self._unread_count = 0
         self._update_badge()
         self.unread_changed.emit(0)
+
+    def refresh_theme(self):
+        """Re-apply all theme colors after a theme switch."""
+        self.setStyleSheet(f"""
+            #notificationCenter {{
+                background: {c().BG};
+                border-left: 1px solid {c().BORDER};
+            }}
+        """)
+        self._header.setStyleSheet(f"""
+            QFrame {{
+                background: {c().BG_ALT};
+                border-bottom: 1px solid {c().BORDER};
+            }}
+        """)
+        self._scroll.setStyleSheet(f"""
+            QScrollArea {{ background: transparent; border: none; }}
+            QScrollBar:vertical {{
+                background: transparent; width: 6px; border: none;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {c().BORDER_H}; border-radius: 3px; min-height: 20px;
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                height: 0; border: none;
+            }}
+        """)
+        # Rebuild items with new theme
+        self._rebuild_list()
 
     @property
     def unread_count(self) -> int:

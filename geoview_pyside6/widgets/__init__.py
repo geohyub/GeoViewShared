@@ -21,11 +21,12 @@ from geoview_pyside6.widgets.skeleton_loader import (
 )
 from geoview_pyside6.widgets.command_palette import CommandPalette
 from geoview_pyside6.widgets.welcome_dialog import WelcomeDialog
-from geoview_pyside6.widgets.breadcrumb import Breadcrumb
+from geoview_pyside6.widgets.breadcrumb import Breadcrumb, BreadcrumbBar
 from geoview_pyside6.widgets.animated_tab_bar import AnimatedTabBar
 from geoview_pyside6.widgets.settings_panel import SettingsPanel
 from geoview_pyside6.widgets.notification_center import NotificationCenter
 from geoview_pyside6.widgets.success_overlay import SuccessOverlay
+from geoview_pyside6.widgets.track_plot import TrackPlot, LineRoute
 from geoview_pyside6.utils import ElidedLabel
 
 __all__ = [
@@ -35,8 +36,9 @@ __all__ = [
     "LoadingSpinner", "LoadingOverlay",
     "SkeletonRect", "SkeletonText", "SkeletonKPICard", "SkeletonTableRows",
     "CommandPalette", "WelcomeDialog",
-    "Breadcrumb", "AnimatedTabBar",
+    "Breadcrumb", "BreadcrumbBar", "AnimatedTabBar",
     "SettingsPanel", "NotificationCenter",
     "SuccessOverlay",
+    "TrackPlot", "LineRoute",
     "ElidedLabel",
 ]

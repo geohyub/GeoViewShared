@@ -380,6 +380,8 @@ class GeoViewApp(QMainWindow):
         self._current_panel: Optional[str] = None
         self._dirty: bool = False
         self._docks: dict[str, QDockWidget] = {}
+        self._panel_history: list[str] = []
+        self._history_index: int = -1
 
         # Project context (opt-in, 실패해도 앱 시작에 영향 없음)
         self.project_context = None  # Optional[ProjectContext]
@@ -426,6 +428,11 @@ class GeoViewApp(QMainWindow):
 
         self.top_bar = TopBar()
         right_layout.addWidget(self.top_bar)
+
+        from geoview_pyside6.widgets.breadcrumb import BreadcrumbBar
+        self._breadcrumb_bar = BreadcrumbBar()
+        self._breadcrumb_bar.crumb_clicked.connect(self._on_breadcrumb_clicked)
+        right_layout.addWidget(self._breadcrumb_bar)
 
         self.content_stack = AnimatedStackedWidget(duration=200)
         self.content_stack.setObjectName("contentStack")
@@ -696,7 +703,7 @@ class GeoViewApp(QMainWindow):
 
         t = c()
         self._theme_btn.setIcon(_icon(icon_name, t.MUTED))
-        self._theme_btn.setToolTip(f"{label} \u2192 {next_label}")
+        self._theme_btn.setToolTip(f"{label} -> {next_label}")
         self._theme_btn.setIconSize(QSize(16, 16))
         # 테마에 맞는 호버 색상 적용
         hover_bg = "rgba(255,255,255,0.08)" if self._current_theme_mode == "dark" else "rgba(0,0,0,0.06)"
@@ -746,6 +753,18 @@ class GeoViewApp(QMainWindow):
                     widget.refresh_theme()
                 except Exception:
                     pass
+        # Notification center 테마 갱신
+        if hasattr(self, '_notification_center') and self._notification_center:
+            try:
+                self._notification_center.refresh_theme()
+            except Exception:
+                pass
+        # 브레드크럼 바 테마 갱신
+        if hasattr(self, '_breadcrumb_bar') and self._breadcrumb_bar:
+            try:
+                self._breadcrumb_bar.refresh_theme()
+            except Exception:
+                pass
         # 사이드바 브랜드 색상 업데이트
         theme = CATEGORY_THEMES.get(self.CATEGORY, CATEGORY_THEMES[Category.PROCESSING])
         self.sidebar.set_brand(self.APP_NAME, self.APP_VERSION, theme.accent)
@@ -941,20 +960,95 @@ class GeoViewApp(QMainWindow):
         if hasattr(self, '_loading_overlay') and self._loading_overlay:
             self._loading_overlay.hide_loading()
 
-    def _switch_panel(self, panel_id: str):
-        """패널 전환."""
+    def _switch_panel(self, panel_id: str, *, _from_history: bool = False):
+        """패널 전환.
+
+        Args:
+            panel_id: 전환할 패널 ID.
+            _from_history: True이면 히스토리 이동에 의한 전환 (히스토리 추가 건너뜀).
+        """
+        old_panel = self._current_panel
         self._current_panel = panel_id
         self._settings.setValue("last_panel", panel_id)
         panel = self._panels.get(panel_id)
         if panel:
-            self.content_stack.set_current_with_animation(panel)
+            # 방향성 전환: 패널 순서 기반
+            direction = "fade"
+            if old_panel and old_panel != panel_id:
+                try:
+                    old_idx = self._panel_order.index(old_panel)
+                    new_idx = self._panel_order.index(panel_id)
+                    direction = "forward" if new_idx > old_idx else "back"
+                except ValueError:
+                    pass
+            self.content_stack.set_current_with_animation(panel, direction=direction)
             title = getattr(panel, 'panel_title', panel_id.replace('_', ' ').title())
             self.top_bar.set_title(title)
+
+            # 히스토리 관리
+            if not _from_history:
+                # 현재 위치 이후의 히스토리 잘라내기
+                if self._history_index < len(self._panel_history) - 1:
+                    self._panel_history = self._panel_history[:self._history_index + 1]
+                self._panel_history.append(panel_id)
+                self._history_index = len(self._panel_history) - 1
+
+            # 브레드크럼 업데이트
+            self._update_breadcrumb()
+
             if hasattr(panel, 'on_panel_activated'):
                 panel.on_panel_activated()
 
     def get_panel(self, panel_id: str) -> Optional[QWidget]:
         return self._panels.get(panel_id)
+
+    # ── Breadcrumb & History ──
+
+    def _update_breadcrumb(self) -> None:
+        """현재 히스토리를 기반으로 브레드크럼 업데이트."""
+        if not self._panel_history:
+            self._breadcrumb_bar.set_path([])
+            return
+
+        # 히스토리에서 현재 위치까지의 고유 경로 구성 (중복 제거, 순서 유지)
+        seen: set[str] = set()
+        path: list[tuple[str, str]] = []
+        for pid in self._panel_history[:self._history_index + 1]:
+            if pid not in seen:
+                seen.add(pid)
+                panel = self._panels.get(pid)
+                label = getattr(panel, 'panel_title', pid.replace('_', ' ').title()) if panel else pid
+                path.append((pid, label))
+
+        # 브레드크럼 경로가 1개면 (현재 위치만) 숨김
+        if len(path) <= 1:
+            self._breadcrumb_bar.set_path([])
+        else:
+            self._breadcrumb_bar.set_path(path)
+
+    def _on_breadcrumb_clicked(self, panel_id: str) -> None:
+        """브레드크럼 항목 클릭 시 해당 패널로 이동."""
+        if panel_id in self._panels:
+            self.sidebar.set_active_panel(panel_id)
+
+    def _history_back(self) -> None:
+        """Alt+Left: 이전 패널로 이동."""
+        if self._history_index > 0:
+            self._history_index -= 1
+            pid = self._panel_history[self._history_index]
+            # 사이드바 버튼 상태 업데이트 (재귀 방지를 위해 직접 호출)
+            for btn in self.sidebar.buttons:
+                btn.set_active(btn.panel_id == pid)
+            self._switch_panel(pid, _from_history=True)
+
+    def _history_forward(self) -> None:
+        """Alt+Right: 다음 패널로 이동."""
+        if self._history_index < len(self._panel_history) - 1:
+            self._history_index += 1
+            pid = self._panel_history[self._history_index]
+            for btn in self.sidebar.buttons:
+                btn.set_active(btn.panel_id == pid)
+            self._switch_panel(pid, _from_history=True)
 
     # ── Project Context ──
 
@@ -1065,7 +1159,7 @@ class GeoViewApp(QMainWindow):
 
     def _setup_shortcuts(self) -> None:
         """전역 키보드 단축키 등록."""
-        QShortcut(QKeySequence("Ctrl+Shift+P"), self, self._show_command_palette)
+        QShortcut(QKeySequence("Ctrl+K"), self, self._show_command_palette)
         QShortcut(
             QKeySequence("Ctrl+H"), self,
             lambda: self.sidebar.set_active_panel(self._panel_order[0])
@@ -1077,54 +1171,82 @@ class GeoViewApp(QMainWindow):
         QShortcut(QKeySequence("Ctrl+,"), self, self._show_settings)
         QShortcut(QKeySequence("Ctrl+Shift+N"), self, self._toggle_notification_center)
         QShortcut(QKeySequence("Ctrl+B"), self, self.sidebar.toggle_collapsed)
+        QShortcut(QKeySequence("Alt+Left"), self, self._history_back)
+        QShortcut(QKeySequence("Alt+Right"), self, self._history_forward)
 
     def _setup_command_palette(self) -> None:
-        """커맨드 팔레트 초기화 및 기본 액션 등록."""
+        """커맨드 팔레트 초기화 및 기본 액션 등록 (Ctrl+K)."""
         from geoview_pyside6.widgets.command_palette import CommandPalette
-        self._cmd_palette = CommandPalette(parent=self)
 
-        # Auto-register all panels
+        # Overlay widget -- parented to centralWidget so it covers content area
+        central = self.centralWidget()
+        self._cmd_palette = CommandPalette(parent=central or self)
+
+        # Auto-register all sidebar panels as Navigation actions
         for pid in self._panel_order:
             panel = self._panels[pid]
-            label = getattr(panel, 'panel_title', pid.replace('_', ' ').title())
+            label = getattr(panel, "panel_title", pid.replace("_", " ").title())
             self._cmd_palette.register_action(
                 f"panel.{pid}", f"Go to {label}", category="Navigation",
                 callback=lambda p=pid: self.sidebar.set_active_panel(p),
             )
 
-        # Standard actions
+        # Standard built-in actions
         self._cmd_palette.register_action(
-            "lang.toggle", "Toggle Language (KO/EN)", "Ctrl+L",
-            "Settings", callback=self.toggle_language,
+            "home", "Go to Home",
+            "Ctrl+H", "Navigation",
+            callback=lambda: (
+                self.sidebar.set_active_panel(self._panel_order[0])
+                if self._panel_order else None
+            ),
         )
         self._cmd_palette.register_action(
-            "theme.toggle", "Toggle Dark/Light Mode", "Ctrl+Shift+T",
-            "Settings", callback=self._toggle_theme,
+            "settings.open", "Open Settings",
+            "Ctrl+,", "Settings",
+            callback=self._show_settings,
         )
         self._cmd_palette.register_action(
-            "fullscreen", "Toggle Fullscreen", "F11",
-            "View", callback=self._toggle_fullscreen,
+            "theme.toggle", "Toggle Dark/Light Mode",
+            "Ctrl+Shift+T", "Settings",
+            callback=self._toggle_theme,
         )
         self._cmd_palette.register_action(
-            "settings.open", "Open Settings", "Ctrl+,",
-            "Settings", callback=self._show_settings,
+            "lang.toggle", "Toggle Language (KO/EN)",
+            "Ctrl+L", "Settings",
+            callback=self.toggle_language,
         )
         self._cmd_palette.register_action(
-            "notifications.toggle", "Toggle Notifications", "Ctrl+Shift+N",
-            "View", callback=self._toggle_notification_center,
+            "fullscreen", "Toggle Fullscreen",
+            "F11", "View",
+            callback=self._toggle_fullscreen,
         )
         self._cmd_palette.register_action(
-            "sidebar.toggle", "Toggle Sidebar", "Ctrl+B",
-            "View", callback=self.sidebar.toggle_collapsed,
+            "notifications.toggle", "Toggle Notifications",
+            "Ctrl+Shift+N", "View",
+            callback=self._toggle_notification_center,
         )
         self._cmd_palette.register_action(
-            "progress.test", "Show Progress Demo", category="Debug",
-            callback=lambda: self.show_status_progress(50, "Demo progress..."),
+            "sidebar.toggle", "Toggle Sidebar",
+            "Ctrl+B", "View",
+            callback=self.sidebar.toggle_collapsed,
+        )
+        self._cmd_palette.register_action(
+            "history.back", "Go Back",
+            "Alt+Left", "Navigation",
+            callback=self._history_back,
+        )
+        self._cmd_palette.register_action(
+            "history.forward", "Go Forward",
+            "Alt+Right", "Navigation",
+            callback=self._history_forward,
         )
 
     def _show_command_palette(self) -> None:
-        """커맨드 팔레트 표시."""
-        self._cmd_palette.show_palette()
+        """커맨드 팔레트 표시 (Ctrl+K)."""
+        if self._cmd_palette.isVisible():
+            self._cmd_palette.hide_palette()
+        else:
+            self._cmd_palette.show_palette()
 
     def _toggle_fullscreen(self) -> None:
         """전체화면 토글."""

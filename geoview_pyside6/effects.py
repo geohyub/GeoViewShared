@@ -7,9 +7,13 @@ QSS는 box-shadow를 지원하지 않으므로, QGraphicsDropShadowEffect 기반
 추가 효과:
 - HoverLiftEffect: 카드 위젯에 hover 시 그림자 확대 (깊이감 전환)
 - PressEffect: 버튼 클릭 시 미세한 opacity dip 피드백
+- shake_widget(): 에러 시 위젯 좌우 미세 진동
 """
 
-from PySide6.QtCore import QEvent, QObject, QPropertyAnimation, QEasingCurve
+from PySide6.QtCore import (
+    QEvent, QObject, QPropertyAnimation, QEasingCurve,
+    QSequentialAnimationGroup, QPoint,
+)
 from PySide6.QtWidgets import (
     QWidget, QGraphicsDropShadowEffect, QGraphicsOpacityEffect,
 )
@@ -37,6 +41,67 @@ def is_reduce_motion() -> bool:
 def anim_duration(base_ms: int) -> int:
     """Reduce Motion이 켜져 있으면 0ms, 아니면 base_ms 반환."""
     return 0 if _reduce_motion else base_ms
+
+
+# ════════════════════════════════════════════
+# Shake Effect
+# ════════════════════════════════════════════
+
+def shake_widget(
+    widget: QWidget,
+    amplitude: int = 3,
+    cycles: int = 3,
+    duration_ms: int = 200,
+) -> None:
+    """에러 시 위젯 좌우 미세 진동.
+
+    Args:
+        widget: 흔들 대상 위젯.
+        amplitude: 좌우 흔들림 폭 (px).
+        cycles: 좌→우→좌 반복 횟수.
+        duration_ms: 전체 애니메이션 시간 (ms).
+
+    Note:
+        Reduce Motion이 켜져 있으면 무시된다.
+    """
+    actual = anim_duration(duration_ms)
+    if actual == 0:
+        return
+
+    origin = widget.pos()
+    step_ms = max(1, actual // (cycles * 2))
+
+    group = QSequentialAnimationGroup(widget)
+
+    for i in range(cycles):
+        # → right
+        anim_r = QPropertyAnimation(widget, b"pos")
+        anim_r.setDuration(step_ms)
+        anim_r.setStartValue(origin)
+        anim_r.setEndValue(origin + QPoint(amplitude, 0))
+        anim_r.setEasingCurve(QEasingCurve.Type.InOutSine)
+        group.addAnimation(anim_r)
+
+        # ← left
+        anim_l = QPropertyAnimation(widget, b"pos")
+        anim_l.setDuration(step_ms)
+        anim_l.setStartValue(origin + QPoint(amplitude, 0))
+        anim_l.setEndValue(origin + QPoint(-amplitude, 0))
+        anim_l.setEasingCurve(QEasingCurve.Type.InOutSine)
+        group.addAnimation(anim_l)
+
+    # 원위치 복귀
+    anim_back = QPropertyAnimation(widget, b"pos")
+    anim_back.setDuration(step_ms)
+    anim_back.setStartValue(origin + QPoint(-amplitude, 0))
+    anim_back.setEndValue(origin)
+    anim_back.setEasingCurve(QEasingCurve.Type.OutCubic)
+    group.addAnimation(anim_back)
+
+    # prevent GC + cleanup
+    widget._shake_anim = group
+    group.finished.connect(lambda: setattr(widget, '_shake_anim', None))
+    group.start()
 
 
 def apply_shadow(widget: QWidget, level: int = 1,

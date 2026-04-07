@@ -194,7 +194,7 @@ class _SectionHeader(QFrame):
         super().mousePressEvent(event)
 
     def _update_chevron(self):
-        self._chevron.setText("\u25BC" if self._expanded else "\u25B6")
+        self._chevron.setText("v" if self._expanded else ">")
 
 
 # ── Main Settings Dialog ─────────────────────────────────────

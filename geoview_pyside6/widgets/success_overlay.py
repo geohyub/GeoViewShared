@@ -1,7 +1,7 @@
 """Success celebration overlay -- animated checkmark + message."""
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QGraphicsOpacityEffect
-from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QRectF, QPointF
+from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QRectF, QPointF, Property
 from PySide6.QtGui import QPainter, QPen, QColor
 from geoview_pyside6.constants import Font
 
@@ -16,11 +16,14 @@ class _CheckmarkWidget(QWidget):
         self._progress = 0.0  # 0.0 -> 1.0
         self._size = size
 
-    def set_progress(self, p: float):
+    def _get_progress(self) -> float:
+        return self._progress
+
+    def _set_progress(self, p: float):
         self._progress = p
         self.update()
 
-    progress = property(lambda self: self._progress, set_progress)
+    progress = Property(float, _get_progress, _set_progress)
 
     def paintEvent(self, event):
         painter = QPainter(self)

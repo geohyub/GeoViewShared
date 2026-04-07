@@ -28,7 +28,10 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt, Signal, QTimer
+from PySide6.QtCore import (
+    Qt, Signal, QTimer,
+    QPropertyAnimation, QEasingCurve, QSequentialAnimationGroup,
+)
 from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
 from PySide6.QtWidgets import (
     QFrame, QVBoxLayout, QHBoxLayout, QLabel,
@@ -336,6 +339,32 @@ class FileDropZone(QFrame):
 
         if paths:
             self.files_dropped.emit(paths)
+            self._drop_bounce()
+
+    def _drop_bounce(self):
+        """Scale bounce after successful drop: 1.0 -> 0.97 -> 1.0 over 200ms."""
+        cur_min = self.minimumSize()
+        cur_max = self.maximumSize()
+        # Only animate the minimum height for squeeze effect
+        base_h = self.height()
+        squeeze_h = int(base_h * 0.97)
+
+        group = QSequentialAnimationGroup(self)
+        # Phase 1: squeeze
+        squeeze = QPropertyAnimation(self, b"minimumHeight", self)
+        squeeze.setDuration(100)
+        squeeze.setStartValue(base_h)
+        squeeze.setEndValue(squeeze_h)
+        squeeze.setEasingCurve(QEasingCurve.Type.OutQuad)
+        group.addAnimation(squeeze)
+        # Phase 2: release back
+        release = QPropertyAnimation(self, b"minimumHeight", self)
+        release.setDuration(100)
+        release.setStartValue(squeeze_h)
+        release.setEndValue(base_h if not self._compact else 46)
+        release.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        group.addAnimation(release)
+        group.start(QSequentialAnimationGroup.DeletionPolicy.DeleteWhenStopped)
 
     # ── 파일 탐색 대화상자 ────────────────────────
 

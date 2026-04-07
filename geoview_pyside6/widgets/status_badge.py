@@ -14,8 +14,8 @@ class StatusBadge(QLabel):
     상태 배지.
 
     Usage:
-        badge = StatusBadge("PASS")              # shows "✓ PASS"
-        badge = StatusBadge("FAIL")              # shows "✗ FAIL"
+        badge = StatusBadge("PASS")              # shows "V PASS"
+        badge = StatusBadge("FAIL")              # shows "X FAIL"
         badge = StatusBadge("A", badge_type="grade")  # shows "A" (no icon)
         badge = StatusBadge("PASS", show_icon=False)  # shows "PASS" (icon disabled)
     """
@@ -32,10 +32,10 @@ class StatusBadge(QLabel):
     }
 
     ICON_MAP = {
-        "PASS": "\u2713",  # checkmark
-        "WARN": "\u26A0",  # warning sign
-        "FAIL": "\u2717",  # ballot x
-        "INFO": "\u2139",  # information source
+        "PASS": "V",   # checkmark (ASCII-safe)
+        "WARN": "!",   # warning (ASCII-safe)
+        "FAIL": "X",   # cross (ASCII-safe)
+        "INFO": "i",   # info (ASCII-safe)
     }
 
     def __init__(self, text: str = "", parent=None, *, show_icon: bool = True):

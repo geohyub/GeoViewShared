@@ -18,10 +18,10 @@ class ConfirmDialog(QDialog):
     @staticmethod
     def _get_icons() -> dict:
         return {
-            "info": ("\u2139", c().CYAN),
-            "warning": ("\u26a0", c().ORANGE),
-            "error": ("\u2717", c().RED),
-            "success": ("\u2713", c().GREEN),
+            "info": ("i", c().CYAN),
+            "warning": ("!", c().ORANGE),
+            "error": ("X", c().RED),
+            "success": ("V", c().GREEN),
         }
 
     def __init__(self, title: str, message: str,

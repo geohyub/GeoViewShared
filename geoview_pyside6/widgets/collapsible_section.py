@@ -18,9 +18,9 @@ from geoview_pyside6.constants import Dark, Font, Space, Radius
 from geoview_pyside6.theme_aware import c
 
 
-# Unicode triangles for chevron indicator
-_CHEVRON_EXPANDED = "\u25BC"   # BLACK DOWN-POINTING TRIANGLE
-_CHEVRON_COLLAPSED = "\u25B6"  # BLACK RIGHT-POINTING TRIANGLE
+# ASCII chevron indicators (Unicode triangles break on some system fonts)
+_CHEVRON_EXPANDED = "v"    # expanded indicator
+_CHEVRON_COLLAPSED = ">"   # collapsed indicator
 
 _ANIMATION_DURATION_MS = 200
 
