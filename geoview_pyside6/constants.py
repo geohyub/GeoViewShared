@@ -103,18 +103,18 @@ class Dark:
 
 
 class Light:
-    """Clean Light — Vercel Geist-inspired, crisp white, high contrast."""
-    BG       = "#ffffff"
-    BG_ALT   = "#fafafa"
-    DARK     = "#f5f5f5"   # input bg, subtle card
-    NAVY     = "#f0f0f0"   # card background
-    SLATE    = "#e5e5e5"   # hover, elevated
+    """Clean Light — Vercel Geist-inspired, crisp white, stronger card contrast."""
+    BG       = "#f8f9fa"
+    BG_ALT   = "#f1f3f5"
+    DARK     = "#e9ecef"   # input bg, subtle card
+    NAVY     = "#ffffff"   # card background (pure white on gray page)
+    SLATE    = "#f1f3f5"   # hover, elevated
     SURFACE  = "#ffffff"   # popover, tooltip
 
     TEXT         = "#171717"   # near-black
     TEXT_BRIGHT  = "#0a0a0a"   # headings
-    MUTED        = "#666666"   # secondary
-    DIM          = "#a3a3a3"   # tertiary
+    MUTED        = "#555555"   # secondary (stronger)
+    DIM          = "#888888"   # tertiary (stronger)
 
     BLUE    = "#0070f3"
     CYAN    = "#0d9488"    # teal-600 (GeoView marine)
@@ -137,16 +137,16 @@ class Light:
     ORANGE_H = "#d4901e"
     PURPLE_H = "#6d28d9"
 
-    BORDER   = "#eaeaea"
-    BORDER_H = "#d4d4d4"
+    BORDER   = "#dee2e6"
+    BORDER_H = "#ced4da"
 
     CROSSHAIR    = "#00000050"
-    CHART_BG     = "#fafafa"
-    CHART_GRID   = "#eaeaea"
+    CHART_BG     = "#ffffff"
+    CHART_GRID   = "#dee2e6"
     STATS_BOX_BG = "#ffffff"
-    STATS_BOX_BORDER = "#eaeaea"
+    STATS_BOX_BORDER = "#dee2e6"
 
-    SHADOW = "rgba(0, 0, 0, 0.06)"
+    SHADOW = "rgba(0, 0, 0, 0.08)"
 
 
 class SkyBlue:

@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from geoview_pyside6.constants import Space
+from geoview_pyside6.effects import reveal_widget, stagger_reveal
 
 
 class DashboardTemplate(QWidget):
@@ -39,6 +40,7 @@ class DashboardTemplate(QWidget):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, False)
         self.setStyleSheet("background: transparent;")
+        self._revealed_once = False
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -78,6 +80,8 @@ class DashboardTemplate(QWidget):
     def add_kpi(self, kpi_card: QWidget) -> DashboardTemplate:
         """KPI 카드 추가. 각 카드는 동일 stretch로 배치. 반환: self (체이닝)."""
         self._kpi_row.addWidget(kpi_card, 1)
+        if self.isVisible():
+            reveal_widget(kpi_card, offset_y=8, duration_ms=180)
         return self
 
     def kpi_row(self) -> QHBoxLayout:
@@ -90,6 +94,8 @@ class DashboardTemplate(QWidget):
         """툴바 슬롯에 위젯 설정. 기존 위젯이 있으면 교체."""
         self._replace_slot(self._toolbar_slot, self._toolbar_widget, widget)
         self._toolbar_widget = widget
+        if self.isVisible():
+            reveal_widget(widget, offset_y=10, duration_ms=180)
 
     def set_content(self, widget: QWidget) -> None:
         """콘텐츠 영역에 위젯 설정 (stretch=1). 기존 위젯이 있으면 교체."""
@@ -98,12 +104,16 @@ class DashboardTemplate(QWidget):
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding,
         )
         self._content_widget = widget
+        if self.isVisible():
+            reveal_widget(widget, offset_y=12, duration_ms=200)
 
     def set_footer(self, widget: QWidget) -> None:
         """푸터 슬롯에 위젯 설정. 최대 높이 160px 제한. 기존 위젯이 있으면 교체."""
         self._replace_slot(self._footer_slot, self._footer_widget, widget)
         widget.setMaximumHeight(self._FOOTER_MAX_HEIGHT)
         self._footer_widget = widget
+        if self.isVisible():
+            reveal_widget(widget, offset_y=10, duration_ms=180)
 
     # ── Slot getters ─────────────────────────────────────
 
@@ -132,3 +142,24 @@ class DashboardTemplate(QWidget):
             layout.removeWidget(old_widget)
             old_widget.setParent(None)  # type: ignore[arg-type]
         layout.addWidget(new_widget)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self._revealed_once:
+            return
+        self._revealed_once = True
+
+        kpis = [
+            self._kpi_row.itemAt(i).widget()
+            for i in range(self._kpi_row.count())
+            if self._kpi_row.itemAt(i).widget() is not None
+        ]
+        stagger_reveal(kpis, offset_y=8, duration_ms=180, stagger_ms=40)
+
+        for widget, offset, duration in (
+            (self._toolbar_widget, 10, 180),
+            (self._content_widget, 12, 220),
+            (self._footer_widget, 10, 180),
+        ):
+            if widget is not None:
+                reveal_widget(widget, offset_y=offset, duration_ms=duration)

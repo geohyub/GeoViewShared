@@ -143,15 +143,15 @@ class ProjectContextStore:
 
     def get_all(self) -> list[ProjectContext]:
         """전체 프로젝트 목록 (updated_at 내림차순)."""
-        results: list[ProjectContext] = []
+        results: list[tuple[ProjectContext, int]] = []
         for f in self._projects_dir.glob("*.json"):
             try:
                 ctx = ProjectContext.from_file(f)
-                results.append(ctx)
+                results.append((ctx, f.stat().st_mtime_ns))
             except Exception as e:
                 logger.warning("프로젝트 파싱 실패 (%s): %s", f.name, e)
-        results.sort(key=lambda c: c.updated_at, reverse=True)
-        return results
+        results.sort(key=lambda item: (item[0].updated_at, item[1]), reverse=True)
+        return [ctx for ctx, _mtime in results]
 
     def get_recent(self, count: int = 5) -> list[ProjectContext]:
         """최근 수정된 프로젝트 N개."""

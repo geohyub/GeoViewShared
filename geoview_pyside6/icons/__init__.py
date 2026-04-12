@@ -11,5 +11,6 @@ GeoView Icons — Lucide SVG Icon System
 """
 
 from .icon_engine import icon, icon_pixmap, SvgIconEngine
+from .app_icons import get_app_icon, set_app_icon
 
-__all__ = ["icon", "icon_pixmap", "SvgIconEngine"]
+__all__ = ["icon", "icon_pixmap", "SvgIconEngine", "get_app_icon", "set_app_icon"]

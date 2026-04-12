@@ -49,8 +49,10 @@ class AnimatedStackedWidget(QStackedWidget):
             self.setCurrentWidget(widget)
             return
 
-        # 모든 전환은 빠른 페이드로 통일 (슬라이드는 렉 유발)
-        self._fade_transition(widget, actual_duration)
+        if direction in {"forward", "back"} and self.width() > 0:
+            self._slide_transition(widget, direction, actual_duration)
+        else:
+            self._fade_transition(widget, actual_duration)
 
     # ──────────────────────────────────────────
     # Fade cross transition (original behavior)

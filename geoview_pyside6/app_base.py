@@ -15,8 +15,17 @@ from PySide6.QtWidgets import (
     QStackedWidget, QLabel, QPushButton, QFrame, QSizePolicy,
     QStatusBar, QToolButton, QMenu, QSplitter, QDockWidget,
 )
-from PySide6.QtCore import Qt, QSize, Signal, QSettings
-from PySide6.QtGui import QFont, QColor, QFontDatabase, QIcon, QShortcut, QKeySequence
+from PySide6.QtCore import Qt, QSize, Signal, QSettings, QTimer, QUrl
+from PySide6.QtGui import (
+    QDesktopServices,
+    QFont,
+    QColor,
+    QFontDatabase,
+    QGuiApplication,
+    QIcon,
+    QShortcut,
+    QKeySequence,
+)
 
 from geoview_pyside6.constants import (
     Category, CATEGORY_THEMES, Light, Font, Space, Radius
@@ -29,6 +38,7 @@ from geoview_pyside6.themes import apply_theme
 from geoview_pyside6.widgets.animated_stack import AnimatedStackedWidget
 
 _logger = logging.getLogger(__name__)
+_FONTS_LOADED = False
 
 
 class SidebarButton(QPushButton):
@@ -189,6 +199,7 @@ class Sidebar(QFrame):
         self._collapse_btn.setFixedHeight(28)
         self._collapse_btn.clicked.connect(self.toggle_collapsed)
         self._collapse_btn.setToolTip("Collapse sidebar")
+        PressEffect.apply(self._collapse_btn)
         self._layout.addWidget(self._collapse_btn)
         self._update_collapse_button()
 
@@ -357,7 +368,7 @@ class TopBar(QFrame):
         btn.setObjectName("primaryButton" if primary else "secondaryButton")
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.clicked.connect(callback)
-        # Subtle click sound feedback
+        PressEffect.apply(btn)
         self.actions_layout.addWidget(btn)
         return btn
 
@@ -387,6 +398,9 @@ class GeoViewApp(QMainWindow):
         self.project_context = None  # Optional[ProjectContext]
         self._context_watcher = None
         self._project_label: Optional[QLabel] = None
+        self._project_quick_btn: Optional[QToolButton] = None
+        self._project_menu: Optional[QMenu] = None
+        self.pending_handoff = None
 
         theme = CATEGORY_THEMES[self.CATEGORY]
 
@@ -396,7 +410,9 @@ class GeoViewApp(QMainWindow):
         # Set app window icon
         try:
             from geoview_pyside6.icons.app_icons import set_app_icon
-            set_app_icon(self.CATEGORY)
+            from geoview_pyside6.icons.app_icons import get_app_icon
+            set_app_icon(self.CATEGORY, app_name=self.APP_NAME)
+            self.setWindowIcon(get_app_icon(self.CATEGORY, app_name=self.APP_NAME))
         except Exception:
             pass
         self.setMinimumSize(1280, 800)
@@ -592,6 +608,7 @@ class GeoViewApp(QMainWindow):
         self._lang_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
         self._lang_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self._lang_button.setAccessibleName("Language toggle")
+        PressEffect.apply(self._lang_button)
 
         lang_menu = QMenu(self._lang_button)
         action_ko = lang_menu.addAction("한국어")
@@ -1083,6 +1100,12 @@ class GeoViewApp(QMainWindow):
             self._setup_project_status_label()
             self._update_project_status_label()
 
+            try:
+                from geoview_common.project_context.integration import load_handoff_from_env
+                self.pending_handoff = load_handoff_from_env()
+            except Exception:
+                self.pending_handoff = None
+
             # 경로 유효성 경고
             if self.project_context:
                 warnings = self.project_context.validate_paths()
@@ -1095,7 +1118,7 @@ class GeoViewApp(QMainWindow):
             _logger.warning("프로젝트 컨텍스트 초기화 실패: %s", e)
 
     def _setup_project_status_label(self) -> None:
-        """상태바 우측에 현재 프로젝트명 라벨 추가."""
+        """상태바 우측에 현재 프로젝트명 + 빠른 액션 버튼 추가."""
         self._project_label = QLabel()
         self._project_label.setStyleSheet(f"""
             font-size: {Font.XS}px;
@@ -1103,6 +1126,35 @@ class GeoViewApp(QMainWindow):
             padding: 0 {Space.SM}px;
             background: transparent;
         """)
+        self._project_quick_btn = QToolButton(self)
+        self._project_quick_btn.setObjectName("projectQuickButton")
+        self._project_quick_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._project_quick_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+        self._project_quick_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self._project_quick_btn.setFixedSize(28, 28)
+        self._project_quick_btn.hide()
+        try:
+            from geoview_pyside6.icons import icon as _icon
+            self._project_quick_btn.setIcon(_icon("folder-open", "#7C8694"))
+            self._project_quick_btn.setIconSize(QSize(16, 16))
+        except Exception:
+            self._project_quick_btn.setText("...")
+        self._project_quick_btn.setStyleSheet("""
+            QToolButton {
+                background: transparent;
+                border: none;
+                border-radius: 4px;
+                padding: 4px;
+            }
+            QToolButton:hover {
+                background: rgba(255,255,255,0.08);
+            }
+        """)
+        self._project_menu = QMenu(self._project_quick_btn)
+        self._project_menu.aboutToShow.connect(self._rebuild_project_menu)
+        self._project_quick_btn.setMenu(self._project_menu)
+
+        self.status_bar.addPermanentWidget(self._project_quick_btn)
         self.status_bar.addPermanentWidget(self._project_label)
 
     def _update_project_status_label(self) -> None:
@@ -1118,8 +1170,13 @@ class GeoViewApp(QMainWindow):
                 padding: 0 {Space.SM}px;
                 background: transparent;
             """)
+            if self._project_quick_btn:
+                self._project_quick_btn.show()
+                self._project_quick_btn.setToolTip(f"Project actions - {name}")
         else:
             self._project_label.setText("No Active Project")
+            if self._project_quick_btn:
+                self._project_quick_btn.hide()
 
     def _on_context_changed_internal(self, ctx) -> None:
         """내부 컨텍스트 변경 핸들러."""
@@ -1154,6 +1211,165 @@ class GeoViewApp(QMainWindow):
             이전 프로젝트 컨텍스트.
         """
         pass
+
+    def sync_project_context_from_project(self, project: dict | None, *,
+                                          files: list[dict] | None = None,
+                                          path_hints: dict[str, str] | None = None,
+                                          metadata: dict | None = None):
+        """앱 로컬 프로젝트 레코드를 shared ProjectContext로 동기화."""
+        if not self.USE_PROJECT_CONTEXT or not project:
+            return None
+        try:
+            from geoview_common.project_context.integration import sync_project_context_from_project
+
+            ctx = sync_project_context_from_project(
+                self.APP_NAME,
+                project,
+                files=files,
+                current_ctx=self.project_context,
+                store=getattr(self, "_context_store", None),
+                path_hints=path_hints,
+                metadata=metadata,
+            )
+            self._on_context_changed_internal(ctx)
+            return ctx
+        except Exception as e:
+            _logger.warning("[%s] project context sync 실패: %s", self.APP_NAME, e)
+            return None
+
+    def create_app_handoff(self, target_app: str, *,
+                           action: str = "open_project",
+                           payload: dict | None = None,
+                           auto_launch: bool = False):
+        """공용 handoff 파일 생성, 필요 시 타 앱 실행."""
+        if not self.project_context:
+            return None
+        try:
+            from geoview_common.project_context.integration import (
+                create_handoff_file,
+                get_context_file_path,
+                launch_registered_app,
+            )
+
+            store = getattr(self, "_context_store", None)
+            handoff_path, handoff = create_handoff_file(
+                self.APP_NAME,
+                target_app,
+                action=action,
+                project_context=self.project_context,
+                payload=payload,
+            )
+            if auto_launch:
+                launch_registered_app(
+                    target_app,
+                    project_file=get_context_file_path(self.project_context, store),
+                    handoff_file=handoff_path,
+                )
+            return handoff_path, handoff
+        except Exception as e:
+            _logger.warning("[%s] handoff 생성 실패: %s", self.APP_NAME, e)
+            return None
+
+    def _rebuild_project_menu(self) -> None:
+        """현재 활성 프로젝트 기준 빠른 액션 메뉴 재구성."""
+        if not self._project_menu:
+            return
+
+        self._project_menu.clear()
+        ctx = self.project_context
+        if not ctx:
+            action = self._project_menu.addAction("No active project")
+            action.setEnabled(False)
+            return
+
+        try:
+            from geoview_common.project_context.integration import (
+                APP_LAUNCH_REGISTRY,
+                build_project_summary,
+                get_context_file_path,
+                iter_existing_project_paths,
+            )
+        except ImportError:
+            action = self._project_menu.addAction("Project context helpers unavailable")
+            action.setEnabled(False)
+            return
+
+        header = self._project_menu.addAction(ctx.display_name())
+        header.setEnabled(False)
+
+        copy_action = self._project_menu.addAction("Copy Project Summary")
+        copy_action.triggered.connect(self._copy_project_summary_to_clipboard)
+
+        context_file = get_context_file_path(ctx, getattr(self, "_context_store", None))
+        open_ctx = self._project_menu.addAction("Open Context File")
+        open_ctx.triggered.connect(lambda: self._open_local_path(context_file))
+
+        path_items = iter_existing_project_paths(ctx)
+        if path_items:
+            path_menu = self._project_menu.addMenu("Open Project Folders")
+            for label, path in path_items:
+                action = path_menu.addAction(label)
+                action.triggered.connect(lambda _=False, p=path: self._open_local_path(p))
+
+        launch_menu = self._project_menu.addMenu("Open In QC App")
+        for spec in APP_LAUNCH_REGISTRY.values():
+            if spec.app_name == self.APP_NAME:
+                continue
+            action = launch_menu.addAction(spec.app_name)
+            action.triggered.connect(
+                lambda _=False, app_name=spec.app_name: self._launch_project_in_registered_app(app_name)
+            )
+
+        summary = build_project_summary(ctx)
+        self._project_menu.addSeparator()
+        summary_action = self._project_menu.addAction(summary.splitlines()[0])
+        summary_action.setEnabled(False)
+
+    def _open_local_path(self, path: str | Path | None) -> bool:
+        """파일 또는 폴더 열기."""
+        if not path:
+            return False
+        target = Path(path)
+        if not target.exists():
+            self.status_bar.showMessage(f"Path not found: {target}", 4000)
+            return False
+        return QDesktopServices.openUrl(QUrl.fromLocalFile(str(target)))
+
+    def _copy_project_summary_to_clipboard(self) -> None:
+        """활성 프로젝트 요약을 클립보드에 복사."""
+        try:
+            from geoview_common.project_context.integration import build_project_summary
+            text = build_project_summary(self.project_context)
+        except ImportError:
+            text = "No active project"
+        QGuiApplication.clipboard().setText(text)
+        self.status_bar.showMessage("Project summary copied", 3000)
+        self.show_toast("Project summary copied", "success", 1800)
+
+    def _launch_project_in_registered_app(self, app_name: str) -> None:
+        """현재 프로젝트 컨텍스트를 handoff와 함께 다른 앱으로 전달."""
+        if not self.project_context:
+            self.show_warning("No Active Project", "Open or save a project first.")
+            return
+        result = self.create_app_handoff(
+            app_name,
+            action="open_project",
+            payload={"from_panel": self._current_panel or ""},
+            auto_launch=True,
+        )
+        if result:
+            self.show_toast(f"Opening {app_name} with active project", "success", 2200)
+        else:
+            self.show_error("Launch Failed", f"Unable to open {app_name}.")
+
+    def _announce_pending_handoff(self) -> None:
+        """앱 시작 시 handoff 정보 요약 표시."""
+        if not self.pending_handoff:
+            return
+        source = self.pending_handoff.get("source_app", "another app")
+        action = self.pending_handoff.get("action", "open_project")
+        self.status_bar.showMessage(f"Handoff from {source}: {action}", 6000)
+        self.show_toast(f"Handoff from {source}", "info", 2400)
 
     # ── Help / Discoverability ──
 
@@ -1241,12 +1457,77 @@ class GeoViewApp(QMainWindow):
             callback=self._history_forward,
         )
 
+        self._cmd_palette.register_action(
+            "project.copy_summary", "Copy Active Project Summary",
+            "", "Project",
+            callback=self._copy_project_summary_to_clipboard,
+        )
+        self._cmd_palette.register_action(
+            "project.open_context", "Open Active Project Context File",
+            "", "Project",
+            callback=self._open_active_project_context_file,
+        )
+        self._cmd_palette.register_action(
+            "project.open_raw", "Open Active Project Raw Data Folder",
+            "", "Project",
+            callback=lambda: self._open_project_path_by_key("raw_data"),
+        )
+        self._cmd_palette.register_action(
+            "project.open_output", "Open Active Project QC Output Folder",
+            "", "Project",
+            callback=lambda: self._open_project_path_by_key("qc_output"),
+        )
+        self._cmd_palette.register_action(
+            "project.open_reports", "Open Active Project Reports Folder",
+            "", "Project",
+            callback=lambda: self._open_project_path_by_key("reports"),
+        )
+        try:
+            from geoview_common.project_context.integration import APP_LAUNCH_REGISTRY
+            for spec in APP_LAUNCH_REGISTRY.values():
+                if spec.app_name == self.APP_NAME:
+                    continue
+                self._cmd_palette.register_action(
+                    f"project.launch.{spec.app_name.lower()}",
+                    f"Open Active Project in {spec.app_name}",
+                    "",
+                    "Project",
+                    callback=lambda app_name=spec.app_name: self._launch_project_in_registered_app(app_name),
+                )
+        except ImportError:
+            pass
+
     def _show_command_palette(self) -> None:
         """커맨드 팔레트 표시 (Ctrl+K)."""
         if self._cmd_palette.isVisible():
             self._cmd_palette.hide_palette()
         else:
             self._cmd_palette.show_palette()
+
+    def _open_active_project_context_file(self) -> None:
+        """현재 컨텍스트 JSON 파일 열기."""
+        if not self.project_context:
+            self.status_bar.showMessage("No active project", 3000)
+            return
+        try:
+            from geoview_common.project_context.integration import get_context_file_path
+            self._open_local_path(
+                get_context_file_path(self.project_context, getattr(self, "_context_store", None))
+            )
+        except ImportError:
+            self.status_bar.showMessage("Project context helpers unavailable", 3000)
+
+    def _open_project_path_by_key(self, attr_name: str) -> None:
+        """프로젝트 경로 중 지정된 키를 엽니다."""
+        ctx = self.project_context
+        if not ctx or not getattr(ctx, "paths", None):
+            self.status_bar.showMessage("No active project", 3000)
+            return
+        value = getattr(ctx.paths, attr_name, "")
+        if not value:
+            self.status_bar.showMessage(f"{attr_name} path is not set", 3000)
+            return
+        self._open_local_path(value)
 
     def _toggle_fullscreen(self) -> None:
         """전체화면 토글."""
@@ -1356,9 +1637,12 @@ class GeoViewApp(QMainWindow):
         """앱 실행 헬퍼."""
         app = QApplication(sys.argv)
 
-        # Load fonts
-        for font_file in (Path(__file__).parent / "fonts").rglob("*.[ot]tf"):
-            QFontDatabase.addApplicationFont(str(font_file))
+        # Load fonts once per process
+        global _FONTS_LOADED
+        if not _FONTS_LOADED:
+            for font_file in (Path(__file__).parent / "fonts").rglob("*.[ot]tf"):
+                QFontDatabase.addApplicationFont(str(font_file))
+            _FONTS_LOADED = True
 
         # Set global default font — Wanted Sans Std: modern Korean UI font
         default_font = QFont("Wanted Sans Std", 11)  # 11pt
@@ -1371,16 +1655,31 @@ class GeoViewApp(QMainWindow):
             from geoview_pyside6.splash import GeoViewSplash
             splash = GeoViewSplash(cls.APP_NAME, cls.APP_VERSION, cls.CATEGORY)
             splash.show()
-            splash.set_status("Initializing...")
+            splash.set_status("Loading fonts...")
+            splash.set_progress(0.18)
             app.processEvents()
         except Exception:
             pass
 
+        if splash:
+            splash.set_status("Preparing workspace...")
+            splash.set_progress(0.34)
+            app.processEvents()
+
         window = cls()
 
         if splash:
-            splash.set_status("Ready")
-            splash.finish_with_delay(window, 600)
+            splash.set_status("Polishing interface...")
+            splash.set_progress(0.92)
+            app.processEvents()
 
         window.show()
+
+        if getattr(window, "pending_handoff", None):
+            QTimer.singleShot(650, window._announce_pending_handoff)
+
+        if splash:
+            splash.set_status("Ready")
+            splash.finish_with_delay(window, 420)
+
         sys.exit(app.exec())

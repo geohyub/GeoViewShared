@@ -166,6 +166,10 @@ def _generate_qss(mode: str = "beige", category: Category = Category.PROCESSING)
         letter-spacing: -0.2px;
     }}
 
+    #contentStack {{
+        background-color: {c.BG};
+    }}
+
     /* ══════════ BUTTONS ══════════ */
     #primaryButton {{
         background-color: {accent};

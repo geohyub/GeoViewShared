@@ -9,11 +9,16 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QTimer
 from geoview_pyside6.constants import Font, Space, Radius
+from geoview_pyside6.effects import PressEffect, reveal_widget, stagger_reveal
 from geoview_pyside6.theme_aware import c
 
 
 class ConfirmDialog(QDialog):
     """Themed confirmation dialog."""
+
+    # Compatibility aliases so existing callers can compare `dlg.exec() == dlg.Accepted`
+    Accepted = QDialog.DialogCode.Accepted
+    Rejected = QDialog.DialogCode.Rejected
 
     @staticmethod
     def _get_icons() -> dict:
@@ -51,6 +56,7 @@ class ConfirmDialog(QDialog):
         # Header row (icon + title)
         header = QHBoxLayout()
         icon_label = QLabel(icon_char)
+        self._icon_label = icon_label
         icon_label.setFixedSize(36, 36)
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         icon_label.setStyleSheet(f"""
@@ -63,6 +69,7 @@ class ConfirmDialog(QDialog):
         header.addWidget(icon_label)
 
         title_label = QLabel(title)
+        self._title_label = title_label
         title_label.setStyleSheet(f"""
             color: {c().TEXT_BRIGHT};
             font-size: {Font.MD}px;
@@ -76,6 +83,7 @@ class ConfirmDialog(QDialog):
 
         # Message
         msg_label = QLabel(message)
+        self._msg_label = msg_label
         msg_label.setWordWrap(True)
         msg_label.setStyleSheet(f"""
             color: {c().TEXT};
@@ -96,7 +104,11 @@ class ConfirmDialog(QDialog):
             cancel_btn = QPushButton(cancel_text)
             cancel_btn.setObjectName("secondaryButton")
             cancel_btn.clicked.connect(self.reject)
+            PressEffect.apply(cancel_btn)
             btn_layout.addWidget(cancel_btn)
+            self._cancel_btn = cancel_btn
+        else:
+            self._cancel_btn = None
 
         confirm_btn = QPushButton(confirm_text)
         if dialog_type == "error":
@@ -111,7 +123,9 @@ class ConfirmDialog(QDialog):
         else:
             confirm_btn.setObjectName("primaryButton")
         confirm_btn.clicked.connect(self.accept)
+        PressEffect.apply(confirm_btn)
         btn_layout.addWidget(confirm_btn)
+        self._confirm_btn = confirm_btn
 
         layout.addLayout(btn_layout)
 
@@ -127,6 +141,24 @@ class ConfirmDialog(QDialog):
         self._fade_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
         self._fade_anim.finished.connect(lambda: self.setGraphicsEffect(None))
         self._fade_anim.start()
+        QTimer.singleShot(
+            0,
+            lambda: (
+                stagger_reveal(
+                    [self._icon_label, self._title_label],
+                    offset_y=6,
+                    duration_ms=160,
+                    stagger_ms=24,
+                ),
+                reveal_widget(self._msg_label, offset_y=8, duration_ms=180),
+                stagger_reveal(
+                    [btn for btn in (self._cancel_btn, self._confirm_btn) if btn is not None],
+                    offset_y=10,
+                    duration_ms=170,
+                    stagger_ms=28,
+                ),
+            ),
+        )
 
         # Shake for error type
         if self._dialog_type == "error":

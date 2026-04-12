@@ -31,6 +31,7 @@ from geoview_pyside6.effects import apply_shadow, anim_duration
 # ── Category badge colors ──
 _CATEGORY_COLORS: dict[str, str] = {
     "navigation": "#14b8a6",
+    "project":    "#f59e0b",
     "settings":   "#3b82f6",
     "view":       "#a78bfa",
     "debug":      "#fbbf24",

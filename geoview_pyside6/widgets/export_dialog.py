@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
 from geoview_pyside6.constants import Font, Space, Radius
+from geoview_pyside6.effects import PressEffect, reveal_widget, stagger_reveal
 from geoview_pyside6.theme_aware import c
 
 
@@ -81,6 +82,7 @@ class ExportProgressDialog(QDialog):
         self._cancel_btn = QPushButton("Cancel")
         self._cancel_btn.setObjectName("secondaryButton")
         self._cancel_btn.clicked.connect(self.reject)
+        PressEffect.apply(self._cancel_btn)
         self._btn_layout.addWidget(self._cancel_btn)
 
         layout.addLayout(self._btn_layout)
@@ -97,6 +99,20 @@ class ExportProgressDialog(QDialog):
         self._fade.setEasingCurve(QEasingCurve.Type.OutCubic)
         self._fade.finished.connect(lambda: self.setGraphicsEffect(None))
         self._fade.start()
+        QTimer.singleShot(
+            0,
+            lambda: (
+                reveal_widget(self._title, offset_y=6, duration_ms=160),
+                reveal_widget(self._status, offset_y=8, duration_ms=180),
+                reveal_widget(self._progress, offset_y=10, duration_ms=190),
+                stagger_reveal(
+                    [self._percent, self._cancel_btn],
+                    offset_y=10,
+                    duration_ms=170,
+                    stagger_ms=24,
+                ),
+            ),
+        )
 
     def update_progress(self, percent: int, message: str = ""):
         self._progress.setValue(percent)
@@ -122,6 +138,7 @@ class ExportProgressDialog(QDialog):
             open_btn.setObjectName("secondaryButton")
             open_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             open_btn.clicked.connect(lambda: self._open_folder(folder))
+            PressEffect.apply(open_btn)
             # Insert before the Close button
             idx = self._btn_layout.indexOf(self._cancel_btn)
             self._btn_layout.insertWidget(idx, open_btn)

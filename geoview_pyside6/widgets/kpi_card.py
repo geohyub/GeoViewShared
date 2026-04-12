@@ -6,10 +6,10 @@ KPI Card Widget
 """
 
 from PySide6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QLabel
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from geoview_pyside6.constants import Font, Space
 from geoview_pyside6.theme_aware import c
-from geoview_pyside6.effects import apply_shadow
+from geoview_pyside6.effects import apply_shadow, HoverLiftEffect, reveal_widget
 from geoview_pyside6.icons.icon_engine import icon_pixmap
 
 
@@ -32,6 +32,10 @@ class KPICard(QFrame):
     ):
         super().__init__(parent)
         self.setObjectName("gvCard")
+        self._accent = accent or c().BLUE
+        self._icon_source = icon
+        self._icon_label: QLabel | None = None
+        self._revealed_once = False
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(Space.BASE, Space.MD, Space.BASE, Space.MD)
@@ -39,29 +43,11 @@ class KPICard(QFrame):
 
         # Icon (hidden when empty)
         if icon:
-            _accent = accent or c().BLUE
             icon_label = QLabel()
             icon_label.setFixedSize(44, 44)
             icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-            # Detect Lucide SVG name vs emoji/unicode/single-letter text
-            # Single characters (len==1) are always text labels, not SVG names.
-            if (len(icon) > 1
-                    and icon.isascii()
-                    and icon.replace("-", "").replace("_", "").isalpha()):
-                # Short ASCII string like "star", "check-circle" → render SVG
-                pxm = icon_pixmap(icon, 24, _accent)
-                icon_label.setPixmap(pxm)
-                icon_label.setStyleSheet(
-                    f"background: {_accent}26; border-radius: 8px;"
-                )
-            else:
-                # Emoji / unicode character → keep text rendering
-                icon_label.setText(icon)
-                icon_label.setStyleSheet(
-                    f"font-size: 20px; background: {_accent}26; "
-                    f"border-radius: 8px;"
-                )
+            self._icon_label = icon_label
+            self._refresh_icon_visual()
             layout.addWidget(icon_label)
 
         # Value + Label
@@ -101,6 +87,7 @@ class KPICard(QFrame):
 
         # Subtle depth
         apply_shadow(self, level=1)
+        HoverLiftEffect.apply(self, lift_px=3)
 
     # ── Loading / Skeleton ──
 
@@ -224,3 +211,40 @@ class KPICard(QFrame):
 
     def set_label(self, label: str):
         self._label.setText(label)
+
+    def refresh_theme(self):
+        """테마 변경 시 아이콘 톤과 카드 디테일 갱신."""
+        self._refresh_icon_visual()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not self._revealed_once:
+            self._revealed_once = True
+            QTimer.singleShot(0, lambda: reveal_widget(self, offset_y=8, duration_ms=200))
+
+    def _refresh_icon_visual(self):
+        if self._icon_label is None or not self._icon_source:
+            return
+
+        icon = self._icon_source
+        self._icon_label.clear()
+
+        # Detect Lucide SVG name vs emoji/unicode/single-letter text
+        # Single characters (len==1) are always text labels, not SVG names.
+        if (len(icon) > 1
+                and icon.isascii()
+                and icon.replace("-", "").replace("_", "").isalpha()):
+            pxm = icon_pixmap(icon, 24, self._accent)
+            self._icon_label.setPixmap(pxm)
+            self._icon_label.setStyleSheet(
+                f"background: {self._accent}20; "
+                f"border: 1px solid {self._accent}2e; "
+                f"border-radius: 10px;"
+            )
+        else:
+            self._icon_label.setText(icon)
+            self._icon_label.setStyleSheet(
+                f"font-size: 20px; background: {self._accent}20; "
+                f"border: 1px solid {self._accent}2e; "
+                f"border-radius: 10px;"
+            )

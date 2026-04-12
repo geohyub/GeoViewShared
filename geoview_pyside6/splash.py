@@ -1,53 +1,69 @@
 """
-GeoView — Splash Screen v3
-============================
-Animated splash with live progress bar that fills during app initialization.
-All 22 apps share this. Always renders in dark mode for brand consistency.
+GeoView splash screen with app-specific branding.
+
+The static background is prerendered once per splash instance so progress updates
+only repaint the dynamic footer, which keeps startup animation smooth.
 """
 
-from PySide6.QtWidgets import QSplashScreen, QApplication
+from __future__ import annotations
+
+from PySide6.QtWidgets import QApplication, QSplashScreen
 from PySide6.QtGui import (
-    QPixmap, QPainter, QColor, QFont, QLinearGradient,
-    QRadialGradient, QPen, QPainterPath, QBrush,
+    QColor,
+    QFont,
+    QLinearGradient,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QPixmap,
+    QRadialGradient,
 )
 from PySide6.QtCore import Qt, QRect, QRectF, QTimer, QPointF
 
-from geoview_pyside6.constants import Category, CATEGORY_THEMES, Font
+from geoview_pyside6.branding import get_app_branding
+from geoview_pyside6.constants import Category, Font
+from geoview_pyside6.icons.icon_engine import icon_pixmap
 
 
-# ── Dark palette (splash always dark for brand consistency) ──
-_BG_TOP = "#0c0c0e"
-_BG_BOT = "#141418"
-_TEXT_BRIGHT = "#f5f5f5"
-_TEXT_MUTED = "#8b8b92"
-_TEXT_DIM = "#5a5a60"
-_BORDER = "#252528"
-_TRACK_BG = "#252528"
+_BG_TOP = "#0B0E12"
+_BG_BOT = "#11161D"
+_TEXT_BRIGHT = "#F5F7FA"
+_TEXT_MUTED = "#9CA5B3"
+_TEXT_DIM = "#6C7786"
+_BORDER = "#202734"
+_TRACK_BG = "#1D2430"
 
-W, H = 540, 320
-_TRACK_Y = H - 38
-_TRACK_MARGIN = 40
+W, H = 560, 336
+_TRACK_Y = H - 34
+_TRACK_MARGIN = 42
 _TRACK_W = W - _TRACK_MARGIN * 2
 
 
-class GeoViewSplash(QSplashScreen):
-    """GeoView branded splash with animated progress bar."""
+def _mix(a: str, b: str, ratio: float) -> QColor:
+    ca = QColor(a)
+    cb = QColor(b)
+    ratio = max(0.0, min(1.0, ratio))
+    inv = 1.0 - ratio
+    return QColor(
+        int(ca.red() * inv + cb.red() * ratio),
+        int(ca.green() * inv + cb.green() * ratio),
+        int(ca.blue() * inv + cb.blue() * ratio),
+    )
 
-    def __init__(self, app_name: str, version: str = "",
-                 category: Category = Category.PROCESSING):
+
+class GeoViewSplash(QSplashScreen):
+    """App-branded splash with cached background and animated progress."""
+
+    def __init__(self, app_name: str, version: str = "", category: Category = Category.PROCESSING):
         self._app_name = app_name
         self._version = version
         self._category = category
-        self._theme = CATEGORY_THEMES.get(category, CATEGORY_THEMES[Category.PROCESSING])
-        self._progress = 0.0  # 0.0 ~ 1.0
+        self._brand = get_app_branding(app_name, category)
+        self._progress = 0.0
         self._status_text = "Loading..."
-        self._accent_r = int(self._theme.accent[1:3], 16)
-        self._accent_g = int(self._theme.accent[3:5], 16)
-        self._accent_b = int(self._theme.accent[5:7], 16)
+        self._static_base = self._render_static_base()
 
-        # Create initial pixmap
-        pixmap = self._render_pixmap()
-        super().__init__(pixmap)
+        super().__init__(self._render_pixmap())
         self.setWindowFlags(
             Qt.WindowType.SplashScreen
             | Qt.WindowType.WindowStaysOnTopHint
@@ -55,22 +71,20 @@ class GeoViewSplash(QSplashScreen):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
-        # Auto-advance animation (smooth fill during init)
         self._auto_timer = QTimer(self)
-        self._auto_timer.setInterval(30)
+        self._auto_timer.setInterval(40)
         self._auto_timer.timeout.connect(self._auto_advance)
         self._auto_timer.start()
 
     def _auto_advance(self):
-        """Smoothly advance progress bar during initialization."""
-        if self._progress < 0.85:
-            # Fast at first, slows down approaching 85%
-            remaining = 0.85 - self._progress
-            self._progress += remaining * 0.08
+        if self._progress < 0.88:
+            remaining = 0.88 - self._progress
+            self._progress += remaining * 0.075
             self._update_pixmap()
 
     def set_status(self, message: str):
-        """Update status text and repaint."""
+        if message == self._status_text and self._progress >= 1.0:
+            return
         self._status_text = message
         if message.lower() in ("ready", "done", "완료"):
             self._progress = 1.0
@@ -79,156 +93,184 @@ class GeoViewSplash(QSplashScreen):
         QApplication.processEvents()
 
     def set_progress(self, value: float):
-        """Set progress 0.0~1.0 directly."""
         self._progress = max(0.0, min(1.0, value))
         self._update_pixmap()
 
-    def finish_with_delay(self, window, delay_ms: int = 600):
-        """Fill to 100%, then close after delay."""
+    def finish_with_delay(self, window, delay_ms: int = 420):
         self._progress = 1.0
         self._auto_timer.stop()
         self._update_pixmap()
-        QTimer.singleShot(delay_ms, lambda: self._finish(window))
-
-    def _finish(self, window):
-        self.finish(window)
+        QTimer.singleShot(delay_ms, lambda: self.finish(window))
 
     def _update_pixmap(self):
-        """Re-render and update the splash pixmap."""
         self.setPixmap(self._render_pixmap())
         self.repaint()
 
-    def _render_pixmap(self) -> QPixmap:
-        """Render the full splash image with current progress."""
-        accent = self._theme.accent
-        ar, ag, ab = self._accent_r, self._accent_g, self._accent_b
+    def _render_static_base(self) -> QPixmap:
+        primary = self._brand.primary
+        secondary = self._brand.secondary
+        pr = QColor(primary)
+        sr = QColor(secondary)
 
         pixmap = QPixmap(W, H)
-        pixmap.fill(QColor(_BG_TOP))
+        pixmap.fill(QColor(0, 0, 0, 0))
+
         painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # Background gradient
+        root = QPainterPath()
+        root.addRoundedRect(QRectF(0.5, 0.5, W - 1, H - 1), 16, 16)
+
         bg_grad = QLinearGradient(0, 0, 0, H)
         bg_grad.setColorAt(0.0, QColor(_BG_TOP))
         bg_grad.setColorAt(1.0, QColor(_BG_BOT))
-        painter.fillRect(0, 0, W, H, bg_grad)
+        painter.fillPath(root, bg_grad)
 
-        # Accent glow at top
-        glow = QRadialGradient(QPointF(W / 2, -20), 280)
-        glow.setColorAt(0.0, QColor(ar, ag, ab, 30))
-        glow.setColorAt(0.5, QColor(ar, ag, ab, 8))
-        glow.setColorAt(1.0, QColor(ar, ag, ab, 0))
-        painter.fillRect(0, 0, W, 160, glow)
+        top_glow = QRadialGradient(QPointF(W * 0.52, 18), 260)
+        top_glow.setColorAt(0.0, QColor(pr.red(), pr.green(), pr.blue(), 46))
+        top_glow.setColorAt(0.5, QColor(pr.red(), pr.green(), pr.blue(), 12))
+        top_glow.setColorAt(1.0, QColor(pr.red(), pr.green(), pr.blue(), 0))
+        painter.fillRect(0, 0, W, 180, top_glow)
 
-        # Top accent line
-        accent_grad = QLinearGradient(0, 0, W, 0)
-        accent_grad.setColorAt(0.0, QColor(ar, ag, ab, 0))
-        accent_grad.setColorAt(0.3, QColor(ar, ag, ab, 180))
-        accent_grad.setColorAt(0.7, QColor(ar, ag, ab, 180))
-        accent_grad.setColorAt(1.0, QColor(ar, ag, ab, 0))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(accent_grad)
-        painter.drawRect(0, 0, W, 2)
+        side_glow = QRadialGradient(QPointF(W * 0.20, H * 0.68), 220)
+        side_glow.setColorAt(0.0, QColor(sr.red(), sr.green(), sr.blue(), 22))
+        side_glow.setColorAt(1.0, QColor(sr.red(), sr.green(), sr.blue(), 0))
+        painter.fillRect(0, 0, W, H, side_glow)
 
-        # Category badge
+        accent_line = QLinearGradient(0, 0, W, 0)
+        accent_line.setColorAt(0.0, QColor(pr.red(), pr.green(), pr.blue(), 0))
+        accent_line.setColorAt(0.22, QColor(pr.red(), pr.green(), pr.blue(), 185))
+        accent_line.setColorAt(0.78, QColor(sr.red(), sr.green(), sr.blue(), 190))
+        accent_line.setColorAt(1.0, QColor(sr.red(), sr.green(), sr.blue(), 0))
+        painter.fillRect(QRectF(0, 0, W, 2), accent_line)
+
+        for idx, alpha in enumerate((26, 18, 12), start=1):
+            painter.setPen(QPen(QColor(sr.red(), sr.green(), sr.blue(), alpha), 1))
+            inset = 26 + idx * 16
+            painter.drawRoundedRect(QRectF(inset, 18 + idx * 10, W - inset * 2, 150 + idx * 16), 24, 24)
+
         badge_text = self._category.value.upper()
         badge_font = QFont(Font.SANS, 8)
         badge_font.setWeight(QFont.Weight.DemiBold)
-        badge_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 1.5)
+        badge_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 1.6)
         painter.setFont(badge_font)
-        badge_w = painter.fontMetrics().horizontalAdvance(badge_text) + 20
-        badge_h = 22
-        badge_x = (W - badge_w) / 2
-        badge_y = 75
+        badge_w = painter.fontMetrics().horizontalAdvance(badge_text) + 24
+        badge_rect = QRectF((W - badge_w) / 2, 20, badge_w, 24)
         badge_path = QPainterPath()
-        badge_path.addRoundedRect(QRectF(badge_x, badge_y, badge_w, badge_h), 11, 11)
-        painter.fillPath(badge_path, QColor(ar, ag, ab, 25))
-        painter.setPen(QColor(ar, ag, ab, 60))
+        badge_path.addRoundedRect(badge_rect, 12, 12)
+        painter.fillPath(badge_path, QColor(pr.red(), pr.green(), pr.blue(), 20))
+        painter.setPen(QPen(QColor(pr.red(), pr.green(), pr.blue(), 82), 1))
         painter.drawPath(badge_path)
-        painter.setPen(QColor(ar, ag, ab, 200))
-        painter.drawText(QRectF(badge_x, badge_y, badge_w, badge_h),
-                         Qt.AlignmentFlag.AlignCenter, badge_text)
+        painter.setPen(QColor(pr.red(), pr.green(), pr.blue(), 220))
+        painter.drawText(badge_rect, Qt.AlignmentFlag.AlignCenter, badge_text)
 
-        # App name
+        hero_rect = QRectF((W - 116) / 2, 56, 116, 116)
+        hero_path = QPainterPath()
+        hero_path.addRoundedRect(hero_rect, 30, 30)
+        hero_grad = QLinearGradient(hero_rect.topLeft(), hero_rect.bottomRight())
+        hero_grad.setColorAt(0.0, _mix(primary, "#FFFFFF", 0.12))
+        hero_grad.setColorAt(1.0, _mix(primary, secondary, 0.42))
+        painter.fillPath(hero_path, hero_grad)
+        painter.setPen(QPen(_mix(primary, "#FFFFFF", 0.46), 1.4))
+        painter.drawPath(hero_path)
+
+        shine = QPainterPath()
+        shine.addRoundedRect(
+            QRectF(hero_rect.left() + 10, hero_rect.top() + 10, hero_rect.width() - 20, 26),
+            13,
+            13,
+        )
+        painter.fillPath(shine, QColor(255, 255, 255, 24))
+
+        icon_size = 58
+        hero_px = icon_pixmap(self._brand.icon_name, size=icon_size, color="#FFFFFF")
+        painter.drawPixmap(int(hero_rect.center().x() - icon_size / 2), int(hero_rect.center().y() - icon_size / 2 - 2), hero_px)
+
+        badge_size = 38
+        badge_circle = QRectF(hero_rect.right() - badge_size * 0.74, hero_rect.bottom() - badge_size * 0.70, badge_size, badge_size)
+        painter.setPen(QPen(QColor(255, 255, 255, 220), 1.4))
+        painter.setBrush(QColor(secondary))
+        painter.drawEllipse(badge_circle)
+        badge_px = icon_pixmap(self._brand.badge_icon, size=18, color=primary)
+        painter.drawPixmap(
+            int(badge_circle.center().x() - badge_px.width() / 2),
+            int(badge_circle.center().y() - badge_px.height() / 2),
+            badge_px,
+        )
+
         painter.setPen(QColor(_TEXT_BRIGHT))
-        name_font = QFont(Font.SANS, 32)
+        name_font = QFont(Font.SANS, 31)
         name_font.setWeight(QFont.Weight.Bold)
-        name_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, -1.0)
+        name_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, -0.6)
         painter.setFont(name_font)
-        painter.drawText(QRect(0, 108, W, 48), Qt.AlignmentFlag.AlignCenter, self._app_name)
+        painter.drawText(QRect(0, 184, W, 40), Qt.AlignmentFlag.AlignCenter, self._app_name)
 
-        # Version
         painter.setPen(QColor(_TEXT_DIM))
-        ver_font = QFont(Font.MONO, 11)
+        ver_font = QFont(Font.MONO, 10)
         painter.setFont(ver_font)
-        painter.drawText(QRect(0, 160, W, 22), Qt.AlignmentFlag.AlignCenter, self._version)
+        painter.drawText(QRect(0, 217, W, 18), Qt.AlignmentFlag.AlignCenter, self._version)
 
-        # Subtitle
         painter.setPen(QColor(_TEXT_MUTED))
-        sub_font = QFont(Font.SANS, 10)
-        sub_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 0.5)
-        painter.setFont(sub_font)
-        painter.drawText(QRect(0, 186, W, 20), Qt.AlignmentFlag.AlignCenter, "GeoView Suite")
+        tag_font = QFont(Font.SANS, 11)
+        painter.setFont(tag_font)
+        painter.drawText(QRect(40, 238, W - 80, 20), Qt.AlignmentFlag.AlignCenter, self._brand.tagline)
 
-        # ── Progress bar (animated) ──
-        # Track background
+        chip_font = QFont(Font.SANS, 9)
+        chip_font.setWeight(QFont.Weight.Medium)
+        painter.setFont(chip_font)
+        spacing = 8
+        chip_items = list(self._brand.features[:3])
+        chip_widths = [painter.fontMetrics().horizontalAdvance(text) + 22 for text in chip_items]
+        total_w = sum(chip_widths) + spacing * max(0, len(chip_widths) - 1)
+        x = (W - total_w) / 2
+        y = 268
+        for idx, text in enumerate(chip_items):
+            rect = QRectF(x, y, chip_widths[idx], 24)
+            path = QPainterPath()
+            path.addRoundedRect(rect, 12, 12)
+            fill = QColor(pr.red(), pr.green(), pr.blue(), 18 if idx == 0 else 12)
+            border = QColor(pr.red(), pr.green(), pr.blue(), 76 if idx == 0 else 52)
+            painter.fillPath(path, fill)
+            painter.setPen(QPen(border, 1))
+            painter.drawPath(path)
+            painter.setPen(QColor(_mix(primary, "#FFFFFF", 0.28)))
+            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, text)
+            x += chip_widths[idx] + spacing
+
+        painter.setPen(QPen(QColor(_BORDER), 1))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRoundedRect(QRectF(0.5, 0.5, W - 1, H - 1), 16, 16)
+        painter.end()
+        return pixmap
+
+    def _render_pixmap(self) -> QPixmap:
+        pixmap = QPixmap(self._static_base)
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QColor(_TRACK_BG))
-        painter.drawRoundedRect(QRectF(_TRACK_MARGIN, _TRACK_Y, _TRACK_W, 3), 1.5, 1.5)
+        painter.drawRoundedRect(QRectF(_TRACK_MARGIN, _TRACK_Y, _TRACK_W, 4), 2, 2)
 
-        # Progress fill
         fill_w = _TRACK_W * self._progress
         if fill_w > 0:
+            pr = QColor(self._brand.primary)
+            sr = QColor(self._brand.secondary)
             prog_grad = QLinearGradient(_TRACK_MARGIN, 0, _TRACK_MARGIN + fill_w, 0)
-            prog_grad.setColorAt(0.0, QColor(ar, ag, ab, 220))
-            prog_grad.setColorAt(1.0, QColor(ar, ag, ab, 140))
+            prog_grad.setColorAt(0.0, QColor(pr.red(), pr.green(), pr.blue(), 235))
+            prog_grad.setColorAt(1.0, QColor(sr.red(), sr.green(), sr.blue(), 220))
             painter.setBrush(prog_grad)
-            painter.drawRoundedRect(
-                QRectF(_TRACK_MARGIN, _TRACK_Y, fill_w, 3), 1.5, 1.5)
+            painter.drawRoundedRect(QRectF(_TRACK_MARGIN, _TRACK_Y, fill_w, 4), 2, 2)
 
-            # Glow dot at the leading edge
             if self._progress < 1.0:
                 dot_x = _TRACK_MARGIN + fill_w
-                painter.setBrush(QColor(ar, ag, ab, 80))
-                painter.drawEllipse(QPointF(dot_x, _TRACK_Y + 1.5), 6, 6)
+                painter.setBrush(QColor(pr.red(), pr.green(), pr.blue(), 86))
+                painter.drawEllipse(QPointF(dot_x, _TRACK_Y + 2), 6, 6)
 
-        # Status text
         painter.setPen(QColor(_TEXT_DIM))
         status_font = QFont(Font.SANS, 9)
         painter.setFont(status_font)
-        painter.drawText(QRect(_TRACK_MARGIN, _TRACK_Y + 8, _TRACK_W // 2, 18),
-                         Qt.AlignmentFlag.AlignLeft, self._status_text)
-
-        # Percentage
-        pct_text = f"{int(self._progress * 100)}%"
-        painter.drawText(QRect(W // 2, _TRACK_Y + 8, _TRACK_W // 2, 18),
-                         Qt.AlignmentFlag.AlignRight, pct_text)
-
-        # Border
-        painter.setPen(QPen(QColor(_BORDER), 1))
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawRoundedRect(QRectF(0.5, 0.5, W - 1, H - 1), 12, 12)
-
+        painter.drawText(QRect(_TRACK_MARGIN, _TRACK_Y + 10, _TRACK_W // 2, 18), Qt.AlignmentFlag.AlignLeft, self._status_text)
+        painter.drawText(QRect(W // 2, _TRACK_Y + 10, _TRACK_W // 2, 18), Qt.AlignmentFlag.AlignRight, f"{int(self._progress * 100)}%")
         painter.end()
-
-        # Rounded corners mask
-        mask = QPixmap(W, H)
-        mask.fill(QColor(0, 0, 0, 0))
-        mp = QPainter(mask)
-        mp.setRenderHint(QPainter.RenderHint.Antialiasing)
-        mp.setBrush(QColor(255, 255, 255))
-        mp.setPen(Qt.PenStyle.NoPen)
-        mp.drawRoundedRect(QRectF(0, 0, W, H), 12, 12)
-        mp.end()
-
-        result = QPixmap(W, H)
-        result.fill(QColor(0, 0, 0, 0))
-        rp = QPainter(result)
-        rp.setRenderHint(QPainter.RenderHint.Antialiasing)
-        rp.drawPixmap(0, 0, mask)
-        rp.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
-        rp.drawPixmap(0, 0, pixmap)
-        rp.end()
-
-        return result
+        return pixmap

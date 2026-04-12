@@ -12,7 +12,7 @@ QSS는 box-shadow를 지원하지 않으므로, QGraphicsDropShadowEffect 기반
 
 from PySide6.QtCore import (
     QEvent, QObject, QPropertyAnimation, QEasingCurve,
-    QSequentialAnimationGroup, QPoint,
+    QSequentialAnimationGroup, QParallelAnimationGroup, QPoint, QTimer,
 )
 from PySide6.QtWidgets import (
     QWidget, QGraphicsDropShadowEffect, QGraphicsOpacityEffect,
@@ -258,3 +258,114 @@ class PressEffect:
         filt = _PressFilter(widget)
         widget.installEventFilter(filt)
         widget._press_filter = filt  # prevent GC
+
+
+# ════════════════════════════════════════════
+# Reveal / Stagger
+# ════════════════════════════════════════════
+
+def reveal_widget(
+    widget: QWidget,
+    *,
+    offset_y: int = 10,
+    offset_x: int = 0,
+    duration_ms: int = 220,
+):
+    """위젯을 짧은 슬라이드 + 선택적 페이드로 등장시킨다.
+
+    Notes:
+        - 레이아웃 내부에서도 비교적 안전한 수준의 짧은 pos 애니메이션만 사용한다.
+        - 기존 drop shadow가 있는 위젯은 opacity effect를 겹치지 않는다.
+    """
+    actual = anim_duration(duration_ms)
+    if actual == 0 or widget is None:
+        return
+
+    def _layout_contains(layout, target: QWidget) -> bool:
+        for index in range(layout.count()):
+            item = layout.itemAt(index)
+            child_widget = item.widget()
+            child_layout = item.layout()
+            if child_widget is target:
+                return True
+            if child_layout is not None and _layout_contains(child_layout, target):
+                return True
+        return False
+
+    def _is_layout_managed(target: QWidget) -> bool:
+        parent = target.parentWidget()
+        if parent is None:
+            return False
+        layout = parent.layout()
+        return layout is not None and _layout_contains(layout, target)
+
+    try:
+        final_pos = widget.pos()
+    except RuntimeError:
+        return
+    start_pos = final_pos + QPoint(offset_x, offset_y)
+    use_position_anim = not _is_layout_managed(widget)
+    if use_position_anim:
+        widget.move(start_pos)
+
+    group = QParallelAnimationGroup(widget)
+
+    if use_position_anim:
+        pos_anim = QPropertyAnimation(widget, b"pos", group)
+        pos_anim.setDuration(actual)
+        pos_anim.setStartValue(start_pos)
+        pos_anim.setEndValue(final_pos)
+        pos_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        group.addAnimation(pos_anim)
+
+    opacity_effect = widget.graphicsEffect()
+    created_opacity = False
+    if opacity_effect is None:
+        opacity_effect = QGraphicsOpacityEffect(widget)
+        widget.setGraphicsEffect(opacity_effect)
+        created_opacity = True
+
+    if isinstance(opacity_effect, QGraphicsOpacityEffect):
+        opacity_effect.setOpacity(0.0)
+        fade_anim = QPropertyAnimation(opacity_effect, b"opacity", group)
+        fade_anim.setDuration(actual)
+        fade_anim.setStartValue(0.0)
+        fade_anim.setEndValue(1.0)
+        fade_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        group.addAnimation(fade_anim)
+
+    def _cleanup():
+        if use_position_anim:
+            widget.move(final_pos)
+        if created_opacity:
+            widget.setGraphicsEffect(None)
+        widget._reveal_anim = None
+
+    widget._reveal_anim = group
+    group.finished.connect(_cleanup)
+    group.start()
+
+
+def stagger_reveal(
+    widgets: list[QWidget],
+    *,
+    offset_y: int = 10,
+    duration_ms: int = 220,
+    stagger_ms: int = 36,
+):
+    """여러 위젯에 짧은 간격을 두고 reveal 애니메이션 적용."""
+    actual = anim_duration(duration_ms)
+    if actual == 0:
+        return
+
+    valid_widgets = [widget for widget in widgets if widget is not None]
+    for index, widget in enumerate(valid_widgets):
+        delay = index * stagger_ms
+        QTimer.singleShot(
+            delay,
+            lambda w=widget: reveal_widget(
+                w,
+                offset_y=offset_y,
+                duration_ms=actual,
+            ),
+        )
