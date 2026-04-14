@@ -29,6 +29,12 @@ from geoview_cpt.parsers.excel_yw import (
     detect_yw_xlsx,
     parse_yw_xlsx,
 )
+from geoview_cpt.parsers.cpet_it_basic_results import (
+    BASIC_RESULTS_COLUMNS,
+    BasicResultsParseError,
+    BasicResultsTable,
+    parse_basic_results,
+)
 from geoview_cpt.parsers.field_book import (
     FieldBookEntry,
     FieldBookParseError,
@@ -58,4 +64,9 @@ __all__ = [
     "FieldBookEntry",
     "FieldBookTable",
     "FieldBookParseError",
+    # CPeT-IT Basic Results (A2.5 R2 tolerance fixture)
+    "parse_basic_results",
+    "BasicResultsTable",
+    "BasicResultsParseError",
+    "BASIC_RESULTS_COLUMNS",
 ]
