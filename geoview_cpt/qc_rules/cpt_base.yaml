@@ -1,0 +1,142 @@
+# geoview_cpt.qc_rules.cpt_base
+# ============================================================================
+# CPT base quality rule pack (Phase A-2 A2.6 v1)
+#
+# Consumed by geoview_pyside6.qc_engine via geoview_cpt.qc_rules.load_cpt_base_pack().
+# Thresholds are baked into geoview_cpt.qc_rules.checks for v1 — the
+# ``parameters`` fields here are informational (Q37 open for runtime
+# parameter injection).
+#
+# Categories (Wave 0 cpt_formulas_and_qc_catalog.md §4):
+#   basic_quality   5 rules — ISO 22476-1:2012 data integrity
+#   termination     4 rules — sensor ceilings + push length bounds
+#   drift           5 rules — Class 1 zero-drift (needs acquisition events)
+
+name: cpt_base
+version: "1.0"
+domain: cpt
+description: >-
+  ISO 22476-1:2012 Class 1 base QC pack — 14 rules across drift,
+  termination, and basic quality categories. Wave 0 thresholds.
+
+rules:
+  # -----------------------------
+  # basic_quality (5)
+  # -----------------------------
+  - id: R_depth_monotonic
+    title: Depth must be monotonically non-decreasing
+    severity: critical
+    category: basic_quality
+    check: depth_monotonic
+    description: >-
+      Flags any sample where depth regresses versus its predecessor.
+      A genuine retract event is emitted via acquisition events, not
+      the continuous depth channel.
+
+  - id: R_spike_detection
+    title: Tip resistance spike (|Δqc| > 5 MPa)
+    severity: warning
+    category: basic_quality
+    check: spike_detection
+    parameters:
+      delta_mpa: 5.0
+
+  - id: R_sensor_saturation
+    title: Sensor saturation (qc/fs/u2 at declared ceiling)
+    severity: warning
+    category: basic_quality
+    check: sensor_saturation
+    parameters:
+      tip_max_mpa: 80.0
+      sleeve_max_kpa: 800.0
+      pore_max_kpa: 4000.0
+
+  - id: R_u2_response
+    title: Pore pressure transducer response (σ_u2 > 0.5 kPa)
+    severity: warning
+    category: basic_quality
+    check: u2_response
+    parameters:
+      std_floor_kpa: 0.5
+
+  - id: R_inclination_exceed
+    title: Inclination within ISO 22476-1 Class 1 (≤ 2°)
+    severity: warning
+    category: basic_quality
+    check: inclination_exceed
+    parameters:
+      max_deg: 2.0
+
+  # -----------------------------
+  # termination_event (4)
+  # -----------------------------
+  - id: R_tip_max_reached
+    title: Tip resistance ceiling reached (80 MPa)
+    severity: info
+    category: termination_event
+    check: tip_max_reached
+    parameters:
+      threshold_mpa: 80.0
+
+  - id: R_sleeve_max_reached
+    title: Sleeve friction ceiling reached (800 kPa)
+    severity: info
+    category: termination_event
+    check: sleeve_max_reached
+    parameters:
+      threshold_kpa: 800.0
+
+  - id: R_pore_max_reached
+    title: Pore pressure ceiling reached (4000 kPa)
+    severity: info
+    category: termination_event
+    check: pore_max_reached
+    parameters:
+      threshold_kpa: 4000.0
+
+  - id: R_penetration_per_push
+    title: Push segment length bound (≤ 3 m per push, aggregate)
+    severity: info
+    category: termination_event
+    check: penetration_per_push
+    parameters:
+      max_push_m: 3.0
+
+  # -----------------------------
+  # drift (5)  — event-dependent; stubbed until A2.0b lands
+  # -----------------------------
+  - id: R_drift_tip_class1
+    title: Tip zero drift (Class 1 ≤ 35 kPa return)
+    severity: warning
+    category: drift
+    check: drift_tip_class1
+    parameters:
+      threshold_kpa: 35.0
+
+  - id: R_drift_sleeve_class1
+    title: Sleeve zero drift (Class 1 ≤ 5 kPa return)
+    severity: warning
+    category: drift
+    check: drift_sleeve_class1
+    parameters:
+      threshold_kpa: 5.0
+
+  - id: R_drift_pore_class1
+    title: Pore zero drift (Class 1 ≤ 25 kPa return)
+    severity: warning
+    category: drift
+    check: drift_pore_class1
+    parameters:
+      threshold_kpa: 25.0
+
+  - id: R_drift_drill_string_class1
+    title: Drill-string drift across rod-change events
+    severity: warning
+    category: drift
+    check: drift_drill_string_class1
+
+  - id: R_class_downgrade
+    title: ISO 22476-1 class downgrade aggregate
+    severity: info
+    category: drift
+    check: class_downgrade

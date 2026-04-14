@@ -31,6 +31,12 @@ from geoview_cpt.derivation.sbt import (
     classify_ic_to_robertson_1990_zone,
     classify_robertson_1990,
 )
+from geoview_cpt.derivation.strength import (
+    DEFAULT_NKT,
+    compute_dr_jamiolkowski,
+    compute_su,
+)
+from geoview_cpt.derivation.water_content import compute_water_content
 
 __all__ = [
     "compute_rf",
@@ -42,4 +48,8 @@ __all__ = [
     "classify_ic_to_robertson_1990_zone",
     "ROBERTSON_1990_ZONES",
     "estimate_gamma_robertson_cabal_2010",
+    "compute_su",
+    "compute_dr_jamiolkowski",
+    "DEFAULT_NKT",
+    "compute_water_content",
 ]
