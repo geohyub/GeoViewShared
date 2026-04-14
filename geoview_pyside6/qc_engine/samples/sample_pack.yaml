@@ -1,0 +1,33 @@
+# qc_engine sample RulePack (data-first twin of samples/builtin_rules.py)
+#
+# Check names are resolved through a RuleCheckRegistry by the test suite;
+# they intentionally mirror the function names in builtin_rules.py.
+name: sample_pack
+version: "0.1"
+domain: sample
+description: "qc_engine smoke-test rule pack (YAML form)"
+
+rules:
+  - id: R_depth_monotonic
+    title: "Depth must be monotonically increasing"
+    severity: critical
+    category: depth_quality
+    check: depth_monotonic
+    parameters:
+      epsilon: 0.001
+
+  - id: R_tip_max_reached
+    title: "Tip resistance max limit reached (80 MPa)"
+    severity: info
+    category: termination_event
+    check: tip_max_reached
+    parameters:
+      threshold_mpa: 80.0
+
+  - id: R_spike_detection
+    title: "Spike detection (abs delta > 10 MPa)"
+    severity: warning
+    category: basic_quality
+    check: spike_detection
+    parameters:
+      max_delta_mpa: 10.0
