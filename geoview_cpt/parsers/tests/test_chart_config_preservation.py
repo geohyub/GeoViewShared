@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from lxml import etree as ET
 
-from geoview_cpt.parsers._xml_sanitize import unmangle
+from geoview_cpt.parsers._xml_fix import serialize_cpet_it_xml
 from geoview_cpt.parsers.cpet_it_v30 import read_cpt_v30_bytes
 
 
@@ -16,15 +16,15 @@ class TestChartConfigRawBytes:
             assert s.chart_config_raw["left"].startswith(b"<ChartPropertiesLeft")
             assert s.chart_config_raw["bottom"].startswith(b"<ChartPropertiesBottom")
 
-    def test_mangled_numeric_tags_are_preserved_losslessly(self, synth_cpt_bytes):
-        """The axis container ``<1>`` must round-trip via unmangle."""
+    def test_numeric_tags_preserved_and_round_trippable(self, synth_cpt_bytes):
+        """The axis container ``<1>`` round-trips via serialize_cpet_it_xml."""
         proj = read_cpt_v30_bytes(synth_cpt_bytes)
-        left = proj.soundings[0].chart_config_raw["left"].decode("utf-8")
-        # lxml hands back the mangled form
-        assert "n_1" in left
-        restored = unmangle(left)
-        assert "<1>" in restored
-        assert "</1>" in restored
+        left_bytes = proj.soundings[0].chart_config_raw["left"]
+        # lxml hands back the prefixed form
+        assert b"_1" in left_bytes
+        restored = serialize_cpet_it_xml(left_bytes)
+        assert b"<1>" in restored
+        assert b"</1>" in restored
 
     def test_chart_config_content_captured(self, synth_cpt_bytes):
         proj = read_cpt_v30_bytes(synth_cpt_bytes)

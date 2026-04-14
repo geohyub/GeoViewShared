@@ -19,7 +19,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from geoview_cpt.model.channel import CPTChannel
+    from geoview_cpt.model.header import CPTHeader
+    from geoview_gi.minimal_model import StratumLayer
 
 __all__ = ["CPTProject", "CPTSounding"]
 
@@ -80,6 +85,47 @@ class CPTSounding:
     chart_config_raw: dict[str, bytes] = field(default_factory=dict)
     blob_b64: str = ""
     extras: dict[str, bytes] = field(default_factory=dict)
+
+    # ------------------------------------------------------------------
+    # A2.1 canonical layer — optional, populated by downstream epics
+    # (A2.0 reader leaves these ``None`` / empty; A2.1 consumers fill
+    # them after the parser is done).
+    # ------------------------------------------------------------------
+    header: "CPTHeader | None" = None
+    channels: dict[str, "CPTChannel"] = field(default_factory=dict)
+    derived: dict[str, "CPTChannel"] = field(default_factory=dict)
+    strata: list["StratumLayer"] = field(default_factory=list)
+    ags_source: dict[str, Any] | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    # ------------------------------------------------------------------
+    # A2.1 convenience accessors
+    # ------------------------------------------------------------------
+
+    @property
+    def total_depth_m(self) -> float:
+        """
+        Deepest depth sample across raw + derived channels, with a
+        fallback to :attr:`max_depth_m` when no depth channel is present.
+        """
+        depth = self.channels.get("depth")
+        if depth is not None and len(depth) > 0:
+            return depth.max()
+        return self.max_depth_m
+
+    def get_channel(self, name: str) -> "CPTChannel":
+        """Lookup a raw then derived channel by name; raises KeyError if missing."""
+        if name in self.channels:
+            return self.channels[name]
+        if name in self.derived:
+            return self.derived[name]
+        raise KeyError(
+            f"channel {name!r} not found — raw: {list(self.channels)}, "
+            f"derived: {list(self.derived)}"
+        )
+
+    def has_channel(self, name: str) -> bool:
+        return name in self.channels or name in self.derived
 
     # ------------------------------------------------------------------
     # Convenience accessors — read-only, strongly typed where it's safe.

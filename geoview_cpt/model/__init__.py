@@ -10,6 +10,21 @@ source preservation, and event streams.
 """
 from __future__ import annotations
 
+from geoview_cpt.model.channel import CPTChannel
+from geoview_cpt.model.header import (
+    AcquisitionEvent,
+    CPTHeader,
+    EventType,
+    SoundingType,
+)
 from geoview_cpt.model.project import CPTProject, CPTSounding
 
-__all__ = ["CPTProject", "CPTSounding"]
+__all__ = [
+    "CPTProject",
+    "CPTSounding",
+    "CPTChannel",
+    "CPTHeader",
+    "AcquisitionEvent",
+    "EventType",
+    "SoundingType",
+]

@@ -6,9 +6,14 @@ Reader for CPeT-IT v.3.9.1.3 ``.cpt`` files (Phase A-2 A2.0).
 Pipeline:
 
     zlib deflate  ──► UTF-8 XML (invalid per W3C — numeric tags)
-                ──► _xml_sanitize.mangle  (``<87616>`` → ``<n_87616>``)
+                ──► _xml_fix.parse_cpet_it_xml  (``<87616>`` → ``<_87616>``)
                 ──► lxml.etree
                 ──► CPTProject / CPTSounding
+
+The fix-up + parse is encapsulated inside ``parse_cpet_it_xml`` so this
+module never touches ``lxml.etree.fromstring`` directly — see the master
+brief in ``plans/cpt_wave0_docs/cpet_it_v30_schema.md`` ⚠️ section
+(commit ``6ddff13``) for the contract.
 
 What we extract:
 
@@ -44,7 +49,7 @@ What we **don't** do yet:
 
 Known CPeT-IT quirks handled here:
 
- - XML is *not* valid per W3C (numeric tags). See :mod:`_xml_sanitize`.
+ - XML is *not* valid per W3C (numeric tags). See :mod:`_xml_fix`.
  - ``<Path>`` branding field is an absolute path on the *author's*
    machine and should not be trusted as a filesystem reference.
  - Mixed content on ``<NNNNN>``: CPeT-IT emits the base64 blob as
@@ -62,7 +67,7 @@ from typing import Any
 from lxml import etree as ET
 
 from geoview_cpt.model.project import CPTProject, CPTSounding
-from geoview_cpt.parsers._xml_sanitize import mangle, original_tag
+from geoview_cpt.parsers._xml_fix import parse_cpet_it_xml, real_tag
 
 __all__ = [
     "CPetItReadError",
@@ -122,13 +127,18 @@ def read_cpt_v30_bytes(raw: bytes) -> CPTProject:
         raise CPetItReadError("empty input")
 
     plain = _inflate(raw)
+    # Sanity check UTF-8 up front so downstream ``.text`` accessors don't
+    # surprise us with decode errors mid-traversal.
     try:
-        mangled = mangle(plain.decode("utf-8"))
+        plain.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise CPetItReadError(f"inflated payload is not UTF-8: {exc}") from exc
 
+    # parse_cpet_it_xml is the single allowed entry point — it applies the
+    # ``<(/?)(\d)  →  <\1_\2`` fix-up that makes the document parseable
+    # (master brief ⚠️ section, commit 6ddff13).
     try:
-        root = ET.fromstring(mangled.encode("utf-8"))
+        root = parse_cpet_it_xml(plain)
     except ET.XMLSyntaxError as exc:
         raise CPetItReadError(f"XML parse failure: {exc}") from exc
 
@@ -218,7 +228,7 @@ def _fill_soundings(project: CPTProject, root: ET._Element) -> None:
 
 
 def _build_sounding(node: ET._Element) -> CPTSounding:
-    element_tag = original_tag(node.tag)
+    element_tag = real_tag(node)
     try:
         handle = int(element_tag)
     except ValueError:
