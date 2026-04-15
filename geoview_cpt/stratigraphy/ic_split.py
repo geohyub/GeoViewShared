@@ -28,10 +28,11 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Literal, Sequence
 
 import numpy as np
 
+from geoview_cpt.derivation.qtn import compute_ic_robertson_2009
 from geoview_cpt.derivation.sbt import classify_ic_to_robertson_1990_zone
 from geoview_gi.minimal_model import StratumLayer
 
@@ -59,18 +60,22 @@ _ZONE_LABELS: dict[int, tuple[str, str]] = {
 }
 
 
+IcMode = Literal["auto", "robertson_2009", "existing", "off"]
+
+
 def auto_split_by_ic(
     sounding: "CPTSounding",
     *,
     thresholds: Sequence[float] = DEFAULT_IC_THRESHOLDS,
     min_thickness_m: float = 0.1,
+    ic_mode: IcMode = "auto",
 ) -> list[StratumLayer]:
     """
     Group contiguous Ic samples into :class:`StratumLayer` instances.
 
     Args:
-        sounding:         must expose ``channels['depth']`` and either
-                          ``derived['Ic']`` or ``channels['Ic']``.
+        sounding:         must expose ``channels['depth']``. Ic is
+                          resolved per ``ic_mode`` (see below).
         thresholds:       Robertson Ic bin boundaries (exclusive upper).
                           Default matches Robertson 2009. Unused here
                           except as trace metadata — the zone classifier
@@ -79,6 +84,25 @@ def auto_split_by_ic(
                           merged with their neighbour (upward by
                           default, downward when the sliver is at the
                           top of the sounding).
+        ic_mode:          Q36b resolution policy:
+
+                            "auto"            — prefer Robertson 2009
+                              iterative Ic when the sounding carries
+                              ``qt``, ``fs``, ``sigma_v0`` and
+                              ``sigma_prime_v0``. Fall back to any
+                              existing ``derived['Ic']`` / ``channels['Ic']``.
+                            "robertson_2009"  — always recompute, raise
+                              :class:`KeyError` if any input is missing.
+                            "existing"        — legacy behaviour (Week 8):
+                              only read ``derived['Ic']`` /
+                              ``channels['Ic']``. No recomputation.
+                            "off"             — single-zone "NA"
+                              undifferentiated layer.
+
+                          Default ``"auto"`` makes the Qt1 → Qtn
+                          transition transparent to existing callers
+                          while upgrading to Robertson 2009 whenever
+                          the inputs are present (Q36b mandate).
 
     Returns:
         Ordered list of :class:`StratumLayer` spanning the full depth
@@ -86,9 +110,11 @@ def auto_split_by_ic(
         samples collapses into one layer.
     """
     depth_ch = sounding.channels.get("depth")
-    ic_ch = sounding.derived.get("Ic") or sounding.channels.get("Ic")
     if depth_ch is None or depth_ch.values.size == 0:
         return []
+
+    ic_ch = _resolve_ic(sounding, ic_mode)
+
     if ic_ch is None or ic_ch.values.size == 0:
         return [
             StratumLayer(
@@ -118,6 +144,54 @@ def auto_split_by_ic(
     layers.append(_make_layer(depth, run_start, depth.size - 1, current_zone))
 
     return _merge_thin(layers, min_thickness_m=min_thickness_m)
+
+
+def _resolve_ic(sounding, mode: IcMode):
+    """
+    Q36b Ic resolution ladder:
+
+    ``"robertson_2009"`` — recompute iteratively from raw channels.
+    ``"auto"``           — recompute when raw inputs are present, else
+                           fall back to an existing Ic channel.
+    ``"existing"``       — read ``derived['Ic']`` / ``channels['Ic']``
+                           only (legacy Week 8 behaviour).
+    ``"off"``            — ignore Ic entirely (caller gets one
+                           undifferentiated layer).
+    """
+    if mode == "off":
+        return None
+
+    have_qt = sounding.derived.get("qt") or sounding.channels.get("qt")
+    have_fs = sounding.channels.get("fs")
+    have_sv0 = sounding.derived.get("sigma_v0") or sounding.channels.get("sigma_v0")
+    have_spv0 = (
+        sounding.derived.get("sigma_prime_v0") or sounding.channels.get("sigma_prime_v0")
+    )
+    have_all_raw = all(ch is not None for ch in (have_qt, have_fs, have_sv0, have_spv0))
+
+    if mode == "robertson_2009":
+        if not have_all_raw:
+            missing = [
+                name
+                for name, ch in (
+                    ("qt", have_qt),
+                    ("fs", have_fs),
+                    ("sigma_v0", have_sv0),
+                    ("sigma_prime_v0", have_spv0),
+                )
+                if ch is None
+            ]
+            raise KeyError(
+                "ic_split ic_mode='robertson_2009' requires qt/fs/sigma_v0/"
+                f"sigma_prime_v0 — missing: {missing}"
+            )
+        return compute_ic_robertson_2009(have_qt, have_fs, have_sv0, have_spv0)
+
+    if mode == "auto" and have_all_raw:
+        return compute_ic_robertson_2009(have_qt, have_fs, have_sv0, have_spv0)
+
+    # auto fallback / existing
+    return sounding.derived.get("Ic") or sounding.channels.get("Ic")
 
 
 def _make_layer(
