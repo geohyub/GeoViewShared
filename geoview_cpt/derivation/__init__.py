@@ -20,6 +20,11 @@ from __future__ import annotations
 
 from geoview_cpt.derivation.bq import compute_bq
 from geoview_cpt.derivation.gamma import estimate_gamma_robertson_cabal_2010
+from geoview_cpt.derivation.qtn import (
+    QtnIterationResult,
+    compute_ic_robertson_2009,
+    compute_qtn_iterative,
+)
 from geoview_cpt.derivation.ic import (
     compute_fr_normalized,
     compute_ic,
@@ -52,4 +57,7 @@ __all__ = [
     "compute_dr_jamiolkowski",
     "DEFAULT_NKT",
     "compute_water_content",
+    "compute_qtn_iterative",
+    "compute_ic_robertson_2009",
+    "QtnIterationResult",
 ]
