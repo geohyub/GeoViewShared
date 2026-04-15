@@ -111,25 +111,36 @@ locations: location/locations.csv
 
 The manifest closes A4.5 and feeds the M4 gate.
 
-## Open questions for Week 17
+## Resolved questions (Week 17 decisions)
 
-1. **Kingdom `06_Kingdom` vs `09_kingdom` reconciliation.** Today the
-   HandoverPackage profile uses `06_Kingdom` for the combined SBP /
-   UHRS workflow. The CPT-side `09_kingdom/` is intentionally
-   separate so the two pipelines don't fight over the folder. Final
-   numbering decision lives with the package generator team — Week
-   18 A4.4 will pick one. **Decision deadline:** Week 18 mid.
-2. **Multi-sounding AGS bundling.** Does Kingdom prefer one `.ags`
-   per sounding or one combined `.ags` with multiple LOCA rows? Week
-   16 ships per-sounding; Week 17 should test the combined variant
-   on a sandbox install.
-3. **Checkshot file format.** Some Kingdom installs expect SEG-Y
-   checkshot rather than CSV. The CSV variant is simpler; SEG-Y is
-   on the v1.1 wishlist (Phase B).
-4. **README content.** Week 18 A4.6 will draft the operator-facing
-   README. Content should include: how to import into Kingdom, CRS
-   note, expected curves, troubleshooting for the python-ags4
-   round-trip TRAN_DLIM gap (Gap #1).
+1. **✅ Q40 — `06_Kingdom` vs `09_kingdom` reconciliation.**
+   Decision: **keep them separate.** `06_Kingdom` remains the
+   SBP / UHRS combined drop owned by the geophysics team and
+   defined in `KFW_2026_OfECC_Geophysical.yaml`. `09_kingdom/` is
+   the CPT-side drop owned by this package. The Week 18 manifest
+   makes the split explicit so operators don't conflate the two
+   workflows.
+2. **✅ Q41 — multi-sounding AGS bundling.**
+   Decision: **hybrid.** Each sounding gets its own
+   `09_kingdom/AGS/<project>_<sounding>.ags` (Kingdom's per-well
+   convention) **plus** a single `09_kingdom/location/project_locations.csv`
+   that lists every sounding for the survey-grid plot. Per-sounding
+   is the import unit; the location CSV is the cross-sounding
+   index.
+3. **✅ Q42 — checkshot file format.**
+   Decision: **CSV** (Kingdom's standard import).
+   `Depth_m` and `TWT_ms` are mandatory; `Interval_Vs_m_s`,
+   `Average_Vs_m_s`, `Source_Offset_m`, `Quality_Flag` are
+   recommended. The first line carries a `# CRS:` comment that
+   Kingdom's parser ignores. SEG-Y checkshot stays on the v1.1
+   wishlist.
+4. **✅ Q43 — README content (Week 18 A4.6 outline).**
+   The README will list: project ID, generation timestamp, source
+   AGS4 spec version, CPT sounding count, checkshot count,
+   Kingdom CRS, the four 09_kingdom subdirectories with one-line
+   descriptions, and a troubleshooting section pointing at
+   `python_ags4_gaps.md` Gap #1 (TRAN_DLIM idempotency caveat).
+   Generated alongside the manifest in A4.5/A4.6.
 
 ## Reference flow (Phase A-4 end-to-end)
 

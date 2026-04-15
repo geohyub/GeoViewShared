@@ -72,7 +72,7 @@ def to_las(bundle: AGSBundle, path: str | Path) -> Path:
         if len(proj_data) > 0:
             las.well.COMP.value = str(proj_data.iloc[0].get("PROJ_CLNT", ""))
 
-    las.add_curve("DEPT", depth, unit="m", descr="Depth")
+    las.append_curve("DEPT", depth, unit="m", descr="Depth")
     numeric_cols = [
         c
         for c in data.columns
@@ -82,7 +82,7 @@ def to_las(bundle: AGSBundle, path: str | Path) -> Path:
     for col in numeric_cols:
         series = pd.to_numeric(data[col], errors="coerce").to_numpy()
         unit = str(unit_row.get(col, "")).strip()
-        las.add_curve(col, series, unit=unit, descr=col)
+        las.append_curve(col, series, unit=unit, descr=col)
 
     las.write(str(path), version=2.0)
     return path
