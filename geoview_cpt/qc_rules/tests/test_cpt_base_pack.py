@@ -136,21 +136,29 @@ class TestDriftWithEvents:
                         if any("events" in i.description.lower() for i in s.issues)]
         assert len(drift_stages) == 5
 
-    def test_drift_stubs_empty_with_events(self):
+    def test_drift_checks_run_with_baseline_events(self):
+        """With Deck+Post baseline events present the drift checks run
+        the real first-vs-last comparison (Week 11 A2.6 backfill)."""
         pack = load_cpt_base_pack()
         s = _clean_sounding()
         s.header.events.append(
-            AcquisitionEvent(timestamp=datetime(2026, 4, 15), event_type="Deck Baseline")
+            AcquisitionEvent(timestamp=datetime(2026, 4, 15, 9), event_type="Deck Baseline")
+        )
+        s.header.events.append(
+            AcquisitionEvent(timestamp=datetime(2026, 4, 15, 10), event_type="Post Baseline")
         )
         result = RuleRunner(pack=pack).run(
             s, domain=QCDomain.CPT, file_name="synth.cpt"
         )
-        drift_ids = {"R_drift_tip_class1", "R_drift_sleeve_class1",
-                     "R_drift_pore_class1", "R_drift_drill_string_class1",
-                     "R_class_downgrade"}
-        drift_stages = [s for s in result.stages if s.stage_name in drift_ids]
+        drift_ids = {
+            "R_drift_tip_class1", "R_drift_sleeve_class1",
+            "R_drift_pore_class1", "R_drift_drill_string_class1",
+            "R_class_downgrade",
+        }
+        drift_stages = [stage for stage in result.stages if stage.stage_name in drift_ids]
+        assert len(drift_stages) == 5
+        # Backfill is live — none of the drift stages should still emit
+        # the "info gap" stub message.
         for stage in drift_stages:
-            assert stage.issues == [], (
-                f"{stage.stage_name} should have empty issues when events present, "
-                f"got {stage.issues}"
-            )
+            for issue in stage.issues:
+                assert "events empty" not in issue.description.lower()

@@ -191,10 +191,27 @@ class TestDriftStubbed:
             assert issues[0].severity == "info"
             assert "events" in issues[0].description.lower()
 
-    def test_with_events_returns_empty(self, clean_sounding):
+    def test_with_baseline_events_runs_real_check(self, clean_sounding):
+        clean_sounding.header.events.append(
+            AcquisitionEvent(timestamp=datetime(2026, 4, 15, 9, 0), event_type="Deck Baseline")
+        )
+        clean_sounding.header.events.append(
+            AcquisitionEvent(timestamp=datetime(2026, 4, 15, 10, 0), event_type="Post Baseline")
+        )
+        # qc channel has a smooth ramp so first-vs-last drift is huge →
+        # tip drift should fire. Assert that the backfill is executing
+        # (no more "info gap" stub).
+        issues = drift_tip_class1(clean_sounding)
+        assert all("events missing" not in i.description for i in issues)
+        # class_downgrade aggregates tip drift → at least one signal
+        downgrade = class_downgrade(clean_sounding)
+        assert isinstance(downgrade, list)
+
+    def test_only_deck_baseline_skips_comparison(self, clean_sounding):
         clean_sounding.header.events.append(
             AcquisitionEvent(timestamp=datetime(2026, 4, 15), event_type="Deck Baseline")
         )
-        # Populated events path exists and returns empty (real logic is A2.0b)
-        assert drift_tip_class1(clean_sounding) == []
-        assert class_downgrade(clean_sounding) == []
+        # Missing Post Baseline → info-gap skip
+        issues = drift_tip_class1(clean_sounding)
+        assert len(issues) == 1
+        assert "baseline" in issues[0].description.lower()

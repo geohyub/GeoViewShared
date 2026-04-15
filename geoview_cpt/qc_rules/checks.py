@@ -370,40 +370,154 @@ def _events(target: CPTSounding):
     return list(target.header.events or [])
 
 
+def _has_baselines(target: CPTSounding) -> bool:
+    """Deck + Post baseline events are the pre-requisites for drift
+    comparison (ISO 22476-1:2012 Annex E)."""
+    events = _events(target)
+    deck = any(e.event_type == "Deck Baseline" for e in events)
+    post = any(e.event_type == "Post Baseline" for e in events)
+    return deck and post
+
+
+def _first_last_diff_kpa(target: CPTSounding, channel_name: str) -> float | None:
+    """First-5 vs last-5 sample mean absolute difference (kPa)."""
+    values = _to_kpa(target, channel_name)
+    if values is None or values.size < 10:
+        return None
+    first = float(np.nanmean(values[:5]))
+    last = float(np.nanmean(values[-5:]))
+    return abs(last - first)
+
+
 def drift_tip_class1(target: CPTSounding) -> list[QCIssue]:
     if not _events(target):
         return [_missing_events("drift", "R_drift_tip_class1")]
-    # Real comparison lands with A2.0b event parser
+    if not _has_baselines(target):
+        return [
+            _issue(
+                "info", "drift",
+                "R_drift_tip_class1: Deck/Post baseline events missing "
+                "— drift comparison skipped",
+            )
+        ]
+    delta = _first_last_diff_kpa(target, "qc")
+    if delta is None:
+        return [_missing_channel("drift", "qc")]
+    if delta > DRIFT_TIP_KPA:
+        return [
+            _issue(
+                "warning", "drift",
+                f"R_drift_tip_class1: first-vs-last qc drift {delta:.1f} kPa "
+                f"> {DRIFT_TIP_KPA} kPa (ISO 22476-1 Class 1)",
+                location="qc",
+                suggestion="review cone cleaning + Deck/Post baseline readings",
+            )
+        ]
     return []
 
 
 def drift_sleeve_class1(target: CPTSounding) -> list[QCIssue]:
     if not _events(target):
         return [_missing_events("drift", "R_drift_sleeve_class1")]
+    if not _has_baselines(target):
+        return [
+            _issue(
+                "info", "drift",
+                "R_drift_sleeve_class1: baselines missing — drift check skipped",
+            )
+        ]
+    delta = _first_last_diff_kpa(target, "fs")
+    if delta is None:
+        return [_missing_channel("drift", "fs")]
+    if delta > DRIFT_SLEEVE_KPA:
+        return [
+            _issue(
+                "warning", "drift",
+                f"R_drift_sleeve_class1: first-vs-last fs drift {delta:.2f} kPa "
+                f"> {DRIFT_SLEEVE_KPA} kPa",
+                location="fs",
+            )
+        ]
     return []
 
 
 def drift_pore_class1(target: CPTSounding) -> list[QCIssue]:
     if not _events(target):
         return [_missing_events("drift", "R_drift_pore_class1")]
+    if not _has_baselines(target):
+        return [
+            _issue(
+                "info", "drift",
+                "R_drift_pore_class1: baselines missing — drift check skipped",
+            )
+        ]
+    delta = _first_last_diff_kpa(target, "u2")
+    if delta is None:
+        return [_missing_channel("drift", "u2")]
+    if delta > DRIFT_PORE_KPA:
+        return [
+            _issue(
+                "warning", "drift",
+                f"R_drift_pore_class1: first-vs-last u2 drift {delta:.1f} kPa "
+                f"> {DRIFT_PORE_KPA} kPa",
+                location="u2",
+            )
+        ]
     return []
 
 
 def drift_drill_string_class1(target: CPTSounding) -> list[QCIssue]:
-    if not _events(target):
+    """
+    Count retract / cone-change events during the main thrust phase.
+    ISO 22476-1 Class 1 tolerates zero; any such event triggers a warn.
+    """
+    events = _events(target)
+    if not events:
         return [_missing_events("drift", "R_drift_drill_string_class1")]
-    return []
+    rod_change_events = [
+        e for e in events if e.event_type in ("CHANGE CONE", "Retract")
+    ]
+    if not rod_change_events:
+        return []
+    return [
+        _issue(
+            "warning", "drift",
+            f"R_drift_drill_string_class1: {len(rod_change_events)} "
+            f"retract/cone-change events detected — Class 1 requires zero",
+            suggestion="review push log for interrupted cycles",
+        )
+    ]
 
 
 def class_downgrade(target: CPTSounding) -> list[QCIssue]:
     """
-    Aggregate downgrade indicator: if any drift rule would fail we flag
-    the sounding as potentially below Class 1. For v1 (no events) this
-    simply reports that the class evaluation is pending.
+    Aggregate downgrade indicator: run all drift checks, roll any
+    warning up into an ISO 22476-1 Class downgrade note.
     """
-    if not _events(target):
+    events = _events(target)
+    if not events:
         return [_missing_events("drift", "R_class_downgrade")]
-    return []
+    downgrade_signals: list[str] = []
+    for fn, rule_id in (
+        (drift_tip_class1, "tip"),
+        (drift_sleeve_class1, "sleeve"),
+        (drift_pore_class1, "pore"),
+        (drift_drill_string_class1, "drill_string"),
+    ):
+        hits = [i for i in fn(target) if i.severity in ("warning", "critical")]
+        if hits:
+            downgrade_signals.append(rule_id)
+    if not downgrade_signals:
+        return []
+    return [
+        _issue(
+            "info", "drift",
+            f"R_class_downgrade: potential Class-2 downgrade — "
+            f"{len(downgrade_signals)} drift signal(s) fired: "
+            f"{', '.join(downgrade_signals)}",
+            suggestion="review vendor baselines before reporting Class 1",
+        )
+    ]
 
 
 # ---------------------------------------------------------------------------
