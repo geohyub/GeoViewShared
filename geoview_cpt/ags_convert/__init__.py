@@ -39,6 +39,12 @@ from geoview_cpt.ags_convert.wrapper import (
     dump_ags,
     load_ags,
 )
+from geoview_cpt.ags_convert.writer import (
+    OnMissingPolicy,
+    ProjectMeta,
+    build_core_bundle,
+    write_ags,
+)
 
 __all__ = [
     "AGSBundle",
@@ -49,4 +55,8 @@ __all__ = [
     "AGS4_CORE_GROUPS",
     "AuditReport",
     "audit_missing_fields",
+    "OnMissingPolicy",
+    "ProjectMeta",
+    "build_core_bundle",
+    "write_ags",
 ]
