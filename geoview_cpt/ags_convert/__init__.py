@@ -43,7 +43,9 @@ from geoview_cpt.ags_convert.writer import (
     OnMissingPolicy,
     ProjectMeta,
     build_core_bundle,
+    build_gi_bundle,
     write_ags,
+    write_gi_ags,
 )
 
 __all__ = [
@@ -58,5 +60,7 @@ __all__ = [
     "OnMissingPolicy",
     "ProjectMeta",
     "build_core_bundle",
+    "build_gi_bundle",
     "write_ags",
+    "write_gi_ags",
 ]

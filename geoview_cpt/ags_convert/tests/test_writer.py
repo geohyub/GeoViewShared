@@ -327,9 +327,10 @@ def test_build_core_bundle_prompt_unsupported(sounding):
         build_core_bundle(sounding, on_missing="prompt")
 
 
-def test_build_core_bundle_inject_default_unsupported(sounding):
-    with pytest.raises(NotImplementedError, match="inject_default"):
-        build_core_bundle(sounding, on_missing="inject_default")
+def test_build_core_bundle_inject_default_ships(sounding):
+    """Week 14: inject_default is implemented (no defaults → same as omit)."""
+    bundle = build_core_bundle(sounding, on_missing="inject_default")
+    assert CORE_GROUPS <= set(bundle.tables.keys())
 
 
 def test_build_core_bundle_invalid_policy(sounding):

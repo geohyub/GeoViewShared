@@ -27,8 +27,11 @@ layers.
 """
 from __future__ import annotations
 
-from geoview_cpt.ags_convert.groups.loca import build_loca
+from geoview_cpt.ags_convert.groups.geol import build_geol
+from geoview_cpt.ags_convert.groups.ispt import build_ispt
+from geoview_cpt.ags_convert.groups.loca import build_loca, build_loca_from_borehole
 from geoview_cpt.ags_convert.groups.proj import build_proj
+from geoview_cpt.ags_convert.groups.samp import build_samp
 from geoview_cpt.ags_convert.groups.scpt import build_scpg, build_scpp, build_scpt
 from geoview_cpt.ags_convert.groups.tran import (
     build_tran,
@@ -42,7 +45,11 @@ __all__ = [
     "build_unit_dictionary",
     "build_type_dictionary",
     "build_loca",
+    "build_loca_from_borehole",
     "build_scpg",
     "build_scpt",
     "build_scpp",
+    "build_geol",
+    "build_samp",
+    "build_ispt",
 ]
