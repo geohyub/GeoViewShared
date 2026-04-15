@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Literal
+from typing import Any, Literal
 
 __all__ = [
     "Borehole",
@@ -136,6 +136,16 @@ class StratumLayer:
     geology_code: str = ""           # USCS or local classification
     age: str = ""                    # e.g. "Quaternary alluvium"
     weathering_grade: int | None = None  # Table 33 — 0..5
+    synthesized_properties: dict[str, Any] = field(default_factory=dict)
+    """
+    Phase A-2 A2.9 — multi-source synthesized layer properties.
+
+    Keyed by property name (``"USCS"``, ``"gamma"``, ``"Su"``, ``"Dr"``,
+    ``"phi_prime"``, ``"Vp"``, ``"Vs"``, ``"N"``, ``"Em"``) → a
+    :class:`geoview_cpt.synthesis.layer_properties.SynthesizedValue`.
+    Typed as ``dict[str, Any]`` to avoid a circular import with the CPT
+    package; downstream consumers type-narrow at the call site.
+    """
 
     def __post_init__(self) -> None:
         if self.top_m < 0:
