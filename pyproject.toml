@@ -20,8 +20,14 @@ docs = ["python-docx>=1.0", "python-pptx>=0.6.21"]
 geo = ["pyproj>=3.6"]
 # Phase A-3 AGS4 conversion engine (geoview_cpt.ags_convert). Pinned to
 # 1.0.0 so byte-level round-trip fixtures don't drift on patch updates.
-ags = ["python-ags4==1.0.0"]
-all = ["geoview-common[gui,segy,docs,geo,ags]"]
+ags = ["python-ags4==1.0.0", "pyyaml>=6.0"]
+# Optional LAS format support (Week 15 A3.4 converters).
+las = ["lasio>=0.31"]
+all = ["geoview-common[gui,segy,docs,geo,ags,las]"]
+
+[project.scripts]
+# Phase A-3 Week 15 A3.5 — AGS4 toolkit CLI
+geoview-ags = "geoview_cpt.ags_convert.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["geoview_common*"]
