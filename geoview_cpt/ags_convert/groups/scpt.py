@@ -196,11 +196,23 @@ def build_scpt(sounding: CPTSounding) -> pd.DataFrame:
     n = len(depth) if depth is not None else 0
     loca_id = safe_text(sounding.name)
     rows: list[dict[str, str]] = []
+    # Composite KEY dedup: (LOCA_ID, SCPG_TESN, SCPT_DPTH) must be
+    # unique per AGS4 Rule 10a. Vendor bundles (JAKO CPT01) are
+    # often oversampled relative to the 2DP display precision, so
+    # multiple raw samples collapse to the same SCPT_DPTH string.
+    # The writer keeps the **first** sample for each unique depth
+    # bin — the user can resample to finer depth precision via the
+    # A-2 decimation step if they need the high-rate trace.
+    seen_depths: set[str] = set()
     for i in range(n):
+        depth_str = format_decimal(_at(depth, i), 2)
+        if depth_str in seen_depths:
+            continue
+        seen_depths.add(depth_str)
         row = {
             "LOCA_ID":   loca_id,
             "SCPG_TESN": DEFAULT_SCPG_TESN,
-            "SCPT_DPTH": format_decimal(_at(depth, i), 2),
+            "SCPT_DPTH": depth_str,
             "SCPT_RES":  format_decimal(_at(qc_mpa, i), 2),
             "SCPT_FRES": format_decimal(_at(fs_kpa, i), 2),
             "SCPT_PWP2": format_decimal(_at(u2_kpa, i), 2),

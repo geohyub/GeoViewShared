@@ -1,0 +1,18 @@
+# JAKO project defaults for on_missing='inject_default' — Phase A-3 M3' gate.
+#
+# These values fill the PROJ/LOCA fields the A-2 JAKO parser cannot
+# recover from the vendor xls bundle (see
+# docs/a3_jako_missing_fields.md).
+project_id: "JAKO-2025"
+project_name: "JAKO Marine CPT"
+project_location: "Offshore Korea"
+client: "Geoview"
+contractor: "Gouda"
+engineer: "Hyub"
+crs: "EPSG:5186"
+loca_type: "CPT"
+loca_status: "FINAL"
+loca_purpose: "Marine CPT survey"
+tran_status: "FINAL"
+tran_description: "JAKO CPT01 — Phase A-3 M3' acceptance"
+tran_recipient: "Geoview"
