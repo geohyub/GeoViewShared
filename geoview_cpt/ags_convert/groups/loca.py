@@ -53,7 +53,6 @@ LOCA_COLUMNS: tuple[str, ...] = (
     "LOCA_FDEP",
     "LOCA_STAR",
     "LOCA_ENDD",
-    "LOCA_CLNT",
     "LOCA_PURP",
 )
 
@@ -69,7 +68,6 @@ LOCA_UNITS: tuple[str, ...] = (
     "m",          # LOCA_FDEP
     "yyyy-mm-dd", # LOCA_STAR
     "yyyy-mm-dd", # LOCA_ENDD
-    "",           # LOCA_CLNT
     "",           # LOCA_PURP
 )
 
@@ -85,7 +83,6 @@ LOCA_TYPES: tuple[str, ...] = (
     "2DP",
     "DT",
     "DT",
-    "X",
     "X",
 )
 
@@ -108,13 +105,11 @@ def build_loca(
     loca_type = ""
     loca_stat = ""
     loca_gref = ""
-    loca_clnt = ""
     loca_purp = ""
     if project_meta is not None:
         loca_type = safe_text(project_meta.loca_type)
         loca_stat = safe_text(project_meta.loca_status)
         loca_gref = safe_text(project_meta.crs)
-        loca_clnt = safe_text(project_meta.client)
         loca_purp = safe_text(project_meta.loca_purpose)
 
     nate = ""
@@ -149,7 +144,6 @@ def build_loca(
         "LOCA_FDEP": fdep,
         "LOCA_STAR": star,
         "LOCA_ENDD": endd,
-        "LOCA_CLNT": loca_clnt,
         "LOCA_PURP": loca_purp,
     }
     return build_table(LOCA_COLUMNS, LOCA_UNITS, LOCA_TYPES, [row])
@@ -186,7 +180,6 @@ def build_loca_from_borehole(
     loca_type = "BH"
     loca_stat = ""
     loca_gref = safe_text(borehole.crs)
-    loca_clnt = safe_text(borehole.client)
     loca_purp = safe_text(borehole.method)
     if project_meta is not None:
         if project_meta.loca_type:
@@ -194,8 +187,6 @@ def build_loca_from_borehole(
         loca_stat = safe_text(project_meta.loca_status)
         if not loca_gref:
             loca_gref = safe_text(project_meta.crs)
-        if not loca_clnt:
-            loca_clnt = safe_text(project_meta.client)
         if project_meta.loca_purpose:
             loca_purp = safe_text(project_meta.loca_purpose)
 
@@ -217,7 +208,6 @@ def build_loca_from_borehole(
         "LOCA_FDEP": fdep,
         "LOCA_STAR": star,
         "LOCA_ENDD": endd,
-        "LOCA_CLNT": loca_clnt,
         "LOCA_PURP": loca_purp,
     }
     return build_table(LOCA_COLUMNS, LOCA_UNITS, LOCA_TYPES, [row])

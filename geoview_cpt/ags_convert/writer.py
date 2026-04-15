@@ -134,12 +134,17 @@ def build_core_bundle(
     loca_df = build_loca(sounding, meta)
     scpg_df = build_scpg(sounding)
     scpt_df = build_scpt(sounding)
-    scpp_df = build_scpp(sounding)
 
-    # GEOL — only included when stratigraphy is attached to the sounding
+    # GEOL + SCPP — only included when stratigraphy is attached.
+    # Week 15 W1 fix: SCPP is a per-stratum parameters group in AGS4
+    # v4.1.1, so without strata there are no interpreted parameters
+    # to emit. Omitting the group entirely keeps the bundle spec-
+    # compliant.
     geol_df = None
+    scpp_df = None
     if getattr(sounding, "strata", None):
         geol_df = build_geol(sounding.name, sounding.strata)
+        scpp_df = build_scpp(sounding)
 
     # Global UNIT / TYPE dictionaries — scan every populated group
     tables_for_dict: dict[str, pd.DataFrame] = {
@@ -148,10 +153,11 @@ def build_core_bundle(
         "LOCA": loca_df,
         "SCPG": scpg_df,
         "SCPT": scpt_df,
-        "SCPP": scpp_df,
     }
     if geol_df is not None:
         tables_for_dict["GEOL"] = geol_df
+    if scpp_df is not None:
+        tables_for_dict["SCPP"] = scpp_df
     used_units = _collect_units(tables_for_dict)
     used_types = _collect_types(tables_for_dict)
     unit_df = build_unit_dictionary(used_units)
@@ -165,10 +171,11 @@ def build_core_bundle(
         "LOCA": loca_df,
         "SCPG": scpg_df,
         "SCPT": scpt_df,
-        "SCPP": scpp_df,
     }
     if geol_df is not None:
         tables["GEOL"] = geol_df
+    if scpp_df is not None:
+        tables["SCPP"] = scpp_df
     headings = {g: list(df.columns) for g, df in tables.items()}
     bundle = AGSBundle(tables=tables, headings=headings)
     bundle.build_unit_map()

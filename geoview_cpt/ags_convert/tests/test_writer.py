@@ -28,7 +28,9 @@ from geoview_cpt.ags_convert.groups import (
 )
 from geoview_cpt.model import CPTChannel, CPTHeader, CPTSounding
 
-CORE_GROUPS = {"PROJ", "TRAN", "UNIT", "TYPE", "LOCA", "SCPG", "SCPT", "SCPP"}
+# Week 15 W1 fix: SCPP is only emitted when stratigraphy is attached.
+# The "core-without-strata" bundle therefore has 7 groups.
+CORE_GROUPS = {"PROJ", "TRAN", "UNIT", "TYPE", "LOCA", "SCPG", "SCPT"}
 
 
 # ---------------------------------------------------------------------------
@@ -190,7 +192,9 @@ def test_build_loca_from_header(sounding, meta):
     assert row["LOCA_NATN"] == "345678.90"
     assert row["LOCA_GL"] == "18.50"
     assert row["LOCA_FDEP"] == "5.00"
-    assert row["LOCA_CLNT"] == "Geoview"
+    # W1 fix: LOCA_CLNT dropped (not AGS4 standard). Client lives in
+    # PROJ_CLNT instead.
+    assert "LOCA_CLNT" not in df.columns
     assert row["LOCA_GREF"] == "EPSG:5186"
     assert row["LOCA_STAR"] == "2025-10-01"
     assert row["LOCA_ENDD"] == "2025-10-01"
@@ -201,7 +205,6 @@ def test_build_loca_without_meta(sounding):
     data = _data_rows(df)
     row = data.iloc[0]
     assert row["LOCA_ID"] == "CPT01"
-    assert row["LOCA_CLNT"] == ""
     assert row["LOCA_GREF"] == ""
 
 
@@ -210,10 +213,13 @@ def test_build_scpg_populated(sounding):
     data = _data_rows(df)
     row = data.iloc[0]
     assert row["LOCA_ID"] == "CPT01"
+    assert row["SCPG_TESN"] == "01"  # W2 fix: non-blank KEY
     assert row["SCPG_TYPE"] == "Gouda WISON"
-    assert row["SCPG_CARD"] == "1000.00"
+    assert row["SCPG_CSA"] == "1000.00"  # W4 fix: was SCPG_CARD
     assert row["SCPG_CAR"] == "0.800"
-    assert row["SCPG_TESD"] == "2025-10-01"
+    # SCPG_TESD, SCPG_CREW, SCPG_DTIM are not in AGS4 v4.1.1 std dict
+    # and are no longer emitted.
+    assert "SCPG_TESD" not in df.columns
 
 
 def test_build_scpt_row_count_and_units(sounding):
@@ -227,13 +233,16 @@ def test_build_scpt_row_count_and_units(sounding):
     assert units["SCPT_FRES"] == "kN/m2"
     assert units["SCPT_PWP2"] == "kN/m2"
     assert units["SCPT_QT"] == "MN/m2"
-    # First data row
+    assert units["SCPT_FRR"] == "%"  # W3 fix: was SCPT_FR
+    # W2 fix: SCPG_TESN is non-blank
     row0 = data.iloc[0]
     assert row0["LOCA_ID"] == "CPT01"
+    assert row0["SCPG_TESN"] == "01"
     assert row0["SCPT_DPTH"] == "0.50"
-    assert row0["SCPT_RES"] == "1.00"  # qc MPa as-is
-    assert row0["SCPT_FRES"] == "10.00"  # fs kPa as-is
+    assert row0["SCPT_RES"] == "1.00"
+    assert row0["SCPT_FRES"] == "10.00"
     assert row0["SCPT_BQ"] == "0.010"
+    assert "SCPT_FR" not in df.columns  # legacy name dropped
 
 
 def test_build_scpt_unit_conversion_mpa_source():
@@ -251,18 +260,40 @@ def test_build_scpt_unit_conversion_mpa_source():
     assert data.iloc[1]["SCPT_RES"] == "2.00"
 
 
-def test_build_scpp_nkt_default(sounding):
+def test_build_scpp_empty_without_strata(sounding):
+    """W1 fix: SCPP is one row per stratum layer, not per depth.
+    Without strata attached the builder emits an empty-DATA group."""
     df = build_scpp(sounding)
-    data = _data_rows(df)
-    assert len(data) == 10
-    assert data.iloc[0]["SCPP_NKT"] == "15.00"
-    assert data.iloc[0]["SCPP_IC"] == "1.500"
+    assert len(_data_rows(df)) == 0
+    # Standard AGS4 columns present
+    assert "SCPP_TOP" in df.columns
+    assert "SCPP_BASE" in df.columns
+    assert "SCPP_REF" in df.columns
+    assert "SCPP_CSBT" in df.columns
 
 
-def test_build_scpp_custom_nkt(sounding):
-    df = build_scpp(sounding, default_nkt=30.0)
+def test_build_scpp_per_stratum_layer():
+    """One SCPP row per StratumLayer, SCPP_CSBT = mean(Ic) within layer."""
+    from geoview_gi.minimal_model import StratumLayer
+
+    s = _make_sounding()
+    s.strata = [
+        StratumLayer(top_m=0.5, base_m=2.0, description="sand"),
+        StratumLayer(top_m=2.0, base_m=5.0, description="clay"),
+    ]
+    s.derived = {
+        "Ic": CPTChannel("Ic", "", np.linspace(1.5, 3.0, 10)),
+    }
+    df = build_scpp(s)
     data = _data_rows(df)
-    assert data.iloc[0]["SCPP_NKT"] == "30.00"
+    assert len(data) == 2
+    assert data.iloc[0]["SCPP_TOP"] == "0.50"
+    assert data.iloc[0]["SCPP_BASE"] == "2.00"
+    assert data.iloc[0]["SCPP_REF"] == "L01"
+    assert data.iloc[0]["SCPG_TESN"] == "01"
+    # SCPP_CSBT is a 3DP decimal average of Ic over [0.5, 2.0]
+    assert data.iloc[0]["SCPP_CSBT"] != ""
+    assert data.iloc[1]["SCPP_REF"] == "L02"
 
 
 def test_unit_dictionary_sorted():
@@ -388,22 +419,18 @@ def test_write_ags_semantic_round_trip(tmp_path, sounding, meta):
     write_ags(sounding, out, project_meta=meta)
     loaded = load_ags(out)
     assert CORE_GROUPS <= set(loaded.tables.keys())
-    # PROJ fields preserved
     proj_data = _data_rows(loaded.tables["PROJ"])
     assert proj_data.iloc[0]["PROJ_ID"] == "P01"
     assert proj_data.iloc[0]["PROJ_CLNT"] == "Geoview"
-    # LOCA preserved
     loca_data = _data_rows(loaded.tables["LOCA"])
     assert loca_data.iloc[0]["LOCA_ID"] == "CPT01"
     assert loca_data.iloc[0]["LOCA_NATE"] == "123456.78"
-    # SCPT row count preserved
     scpt_data = _data_rows(loaded.tables["SCPT"])
     assert len(scpt_data) == 10
     assert scpt_data.iloc[0]["SCPT_DPTH"] == "0.50"
     assert scpt_data.iloc[-1]["SCPT_DPTH"] == "5.00"
-    # SCPP Nkt preserved
-    scpp_data = _data_rows(loaded.tables["SCPP"])
-    assert scpp_data.iloc[0]["SCPP_NKT"] == "15.00"
+    # SCPP is not emitted when the sounding has no strata
+    assert "SCPP" not in loaded.tables
 
 
 def test_write_ags_omit_blank_when_no_meta(tmp_path, sounding):
@@ -414,7 +441,6 @@ def test_write_ags_omit_blank_when_no_meta(tmp_path, sounding):
     assert proj_data.iloc[0]["PROJ_ID"] == ""
     assert proj_data.iloc[0]["PROJ_NAME"] == ""
     loca_data = _data_rows(loaded.tables["LOCA"])
-    assert loca_data.iloc[0]["LOCA_CLNT"] == ""
     assert loca_data.iloc[0]["LOCA_GREF"] == ""
 
 

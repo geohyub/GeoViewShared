@@ -274,7 +274,8 @@ def test_loca_from_borehole_maps_fields(borehole):
     assert row["LOCA_FDEP"] == "10.00"
     assert row["LOCA_STAR"] == "2025-10-01"
     assert row["LOCA_ENDD"] == "2025-10-03"
-    assert row["LOCA_CLNT"] == "Geoview"
+    # W1 fix: LOCA_CLNT dropped — client lives in PROJ_CLNT.
+    assert "LOCA_CLNT" not in df.columns
     assert row["LOCA_PURP"] == "Rotary Core"  # method fallback
 
 
@@ -293,7 +294,8 @@ def test_loca_from_borehole_fallback_crs_from_meta():
     df = build_loca_from_borehole(bh, ProjectMeta(crs="EPSG:4326", client="C"))
     data = _data_rows(df)
     assert data.iloc[0]["LOCA_GREF"] == "EPSG:4326"
-    assert data.iloc[0]["LOCA_CLNT"] == "C"
+    # W1 fix: client lives in PROJ_CLNT, not LOCA
+    assert "LOCA_CLNT" not in df.columns
 
 
 # ---------------------------------------------------------------------------

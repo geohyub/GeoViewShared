@@ -504,12 +504,10 @@ def test_validate_bundle_clean():
     assert errs_by_rule == [], f"unexpected errors: {errors}"
 
 
-def test_validate_file_end_to_end_known_writer_gaps(tmp_path):
+def test_validate_file_end_to_end_clean_after_w1_w4(tmp_path):
     """
-    Validate the current Week 13 writer's output end-to-end and
-    verify the validator catches the known writer gaps documented in
-    ``python_ags4_gaps.md`` (SCPP non-standard headings, missing
-    SCPG_TESN key). The structural rules 1/2/2a/3/5/6 must all pass.
+    After the Week 15 W1-W4 writer refinement the writer's output
+    must be Rule 1-20 clean (errors == 0). Warnings are tolerated.
     """
     d = np.linspace(0.5, 2.0, 4)
     s = CPTSounding(handle=1, element_tag="", name="CPT01", max_depth_m=2.0)
@@ -528,26 +526,8 @@ def test_validate_file_end_to_end_known_writer_gaps(tmp_path):
     write_ags(s, out, project_meta=ProjectMeta(project_id="P01"))
     errors = validate_file(out)
 
-    rules = {e.rule for e in errors}
-    # Structural rules must be clean (writer produces valid bytes)
-    assert "1" not in rules
-    assert "2" not in rules
-    assert "2a" not in rules
-    assert "3" not in rules
-    assert "5" not in rules
-    assert "6" not in rules
-    # Fields rules 7/12 must also be clean
-    assert "7" not in rules
-    assert "12" not in rules
-    # Required-group rules 13-16 clean
-    assert "13" not in rules
-    assert "14" not in rules
-    assert "15" not in rules
-    assert "16" not in rules
-    # Known writer gaps: SCPP uses non-standard headings, SCPG/SCPT
-    # key SCPG_TESN is blank. These must fire.
-    assert "9" in rules   # SCPP_DPTH/IC/NKT not in std dict
-    assert "10" in rules  # SCPG_TESN key column missing
+    fatal = [e for e in errors if e.severity == Severity.ERROR]
+    assert fatal == [], f"writer produced AGS4 Rule violations: {[str(e) for e in fatal]}"
 
 
 def test_validate_file_gi_end_to_end(tmp_path):
