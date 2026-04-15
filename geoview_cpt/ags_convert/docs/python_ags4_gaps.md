@@ -164,6 +164,56 @@ to close Gaps #2–#5 above.
 
 ---
 
+## Writer-side caveats (not library bugs)
+
+These are bugs in **our** Week 13 writer that the Week 14 A3.3
+validator now catches. They are recorded here so Week 15 writer
+refinement can close them without re-discovering the issues.
+
+### W1 — SCPP column set is non-standard
+
+Our Week 13 SCPP writer emits ``SCPP_DPTH / SCPP_IC / SCPP_NKT`` but
+AGS4 v4.1.1 SCPP actually carries
+``SCPP_TOP / SCPP_BASE / SCPP_CIC / SCPP_CSBT / SCPP_CSU / SCPP_CPHI
+/ SCPP_CRD / SCPP_REF`` (it is a *parameters* group, not a
+*per-depth* group — the per-depth Ic belongs in SCPT via the
+``SCPT_FRR`` / ``SCPT_CSBT`` headings).
+
+**Impact:** Rule 9 fires for every SCPP heading. Rule 10 fires for
+missing ``SCPG_TESN`` / ``SCPP_TOP`` / ``SCPP_BASE`` / ``SCPP_REF``
+KEY columns.
+
+**Week 15 fix:** rewrite ``groups/scpt.py`` SCPP path to emit
+summary parameters (CIC / CRD / CPHI / CSU) at representative
+depths; move Ic per-depth into SCPT as ``SCPT_CSBT``.
+
+### W2 — SCPG_TESN KEY blank
+
+SCPG/SCPT/SCPP share the composite key ``(LOCA_ID, SCPG_TESN,
+...)``. Our writer emits ``SCPG_TESN=""`` because A-2 bundles
+typically contain one test per sounding. The key is still blank
+which violates Rule 10b.
+
+**Week 15 fix:** default ``SCPG_TESN="01"`` when the header does not
+supply a test number.
+
+### W3 — SCPT_FR vs SCPT_FRR
+
+Our writer emits ``SCPT_FR`` but the standard heading is
+``SCPT_FRR`` (friction ratio). Rule 9 fires.
+
+**Week 15 fix:** rename the SCPT column.
+
+### W4 — SCPG_CARD not in std dict
+
+Our writer emits ``SCPG_CARD`` for cone base area. The AGS4
+heading is ``SCPG_CSA`` (cone surface area). Rule 9 fires.
+
+**Week 15 fix:** rename and divide by 100 if needed (CARD is mm²
+for cone area; CSA is cm² for surface area).
+
+---
+
 *File owner: `geoview_cpt/ags_convert/validator/`. Keep one numbered
 gap entry per deviation — do not delete entries when we fix them,
 mark them ``~~struck through~~`` with a commit SHA instead.*
