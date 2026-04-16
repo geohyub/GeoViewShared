@@ -16,8 +16,8 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QSplitter, QWidget
 
-from geoview_pyside6.cpt_widgets.analysis_block import AnalysisBlock
-from geoview_pyside6.cpt_widgets.global_depth_picker import GlobalDepthPicker
+from geoview_pyside6.gt_widgets.analysis_block import AnalysisBlock
+from geoview_pyside6.gt_widgets.global_depth_picker import GlobalDepthPicker
 
 _MAX_TILES = 3
 

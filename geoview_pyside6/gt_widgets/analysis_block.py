@@ -18,7 +18,7 @@ WIP owner 영향 범위: 없음. Day 2 scaffold 는 _shared/ pre-existing WIP 8 
     error     : 마지막 실행 실패
 
 Trace 영속 경로:
-    <project_root>/.cptproc_trace/<block_id>/<timestamp>.json
+    <project_root>/.gt_trace/<block_id>/<timestamp>.json
 """
 
 from __future__ import annotations
@@ -117,7 +117,7 @@ def _safe_block_dir_name(block_id: str) -> str:
 
 
 def trace_directory(project_root: Path, block_id: str) -> Path:
-    return Path(project_root) / ".cptproc_trace" / _safe_block_dir_name(block_id)
+    return Path(project_root) / ".gt_trace" / _safe_block_dir_name(block_id)
 
 
 def write_trace(project_root: Path, record: TraceRecord) -> Path:
