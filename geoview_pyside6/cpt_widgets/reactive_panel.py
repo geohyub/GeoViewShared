@@ -87,6 +87,7 @@ class ReactivePanel(QFrame):
     # ---- Private -------------------------------------------------------------
 
     def _on_field_changed(self, key: str, text: str) -> None:
+        new_val: float | str
         try:
             new_val = float(text)
         except ValueError:

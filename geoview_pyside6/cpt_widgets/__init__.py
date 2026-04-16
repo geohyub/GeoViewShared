@@ -15,6 +15,11 @@ v1.0 구현 목록 (new_widgets_spec.md):
 - 본 디렉토리 내 파일만 신규/수정 허용
 """
 
+from geoview_pyside6.cpt_widgets.autosave import (
+    AutosaveManager,
+    AutosaveRecord,
+    UndoStack,
+)
 from geoview_pyside6.cpt_widgets.analysis_block import (
     AnalysisBlock,
     BlockStatus,
@@ -32,12 +37,15 @@ from geoview_pyside6.cpt_widgets.tiled_analysis_window import TiledAnalysisWindo
 
 __all__ = [
     "AnalysisBlock",
+    "AutosaveManager",
+    "AutosaveRecord",
     "BlockStatus",
     "GlobalDepthPicker",
     "ReactivePanel",
     "ShortcutHintBanner",
     "TiledAnalysisWindow",
     "TraceRecord",
+    "UndoStack",
     "compute_params_hash",
     "read_traces",
     "trace_directory",
