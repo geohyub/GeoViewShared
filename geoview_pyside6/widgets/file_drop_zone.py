@@ -36,9 +36,10 @@ from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDropEvent
 from PySide6.QtWidgets import (
     QFrame, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QFileDialog, QSizePolicy, QGraphicsOpacityEffect,
-    QWidget,
+    QWidget, QMessageBox,
 )
 
+from geoview_common.file_validator import validate_files
 from geoview_pyside6.constants import Font, Space, Radius, rgba
 from geoview_pyside6.theme_aware import c
 from geoview_pyside6.icons.icon_engine import icon_pixmap
@@ -77,6 +78,8 @@ class FileDropZone(QFrame):
         icon_name: str = "upload",
         browse_enabled: bool = True,
         compact: bool = False,
+        min_size: int = 1,
+        validation_rules: dict[str, dict] | None = None,
         parent: QWidget | None = None,
     ):
         super().__init__(parent)
@@ -90,6 +93,8 @@ class FileDropZone(QFrame):
         self._icon_name = icon_name
         self._browse_enabled = browse_enabled
         self._compact = compact
+        self._min_size = max(0, int(min_size or 0))
+        self._validation_rules = validation_rules or {}
         self._drag_over = False
         self._enabled = True
 
@@ -284,6 +289,18 @@ class FileDropZone(QFrame):
             if hasattr(self, '_ext_label'):
                 self._ext_label.setText(self._extensions_hint())
 
+    def set_label_text(self, text: str):
+        """Backward-compatible API: update the visible title/label text."""
+        self._title_text = text or ""
+        self.setAccessibleName(self._title_text or "File drop zone")
+        if hasattr(self, "_title_label"):
+            self._title_label.setText(self._title_text)
+
+    def set_browse_text(self, text: str):
+        """Backward-compatible API: update the browse button caption."""
+        if hasattr(self, "_browse_btn"):
+            self._browse_btn.setText(text or "")
+
     def set_enabled_state(self, enabled: bool):
         """드롭 영역 활성/비활성 전환."""
         self._enabled = enabled
@@ -296,6 +313,14 @@ class FileDropZone(QFrame):
 
         if hasattr(self, "_browse_btn"):
             self._browse_btn.setEnabled(enabled)
+
+    def validate_paths(self, paths: list[str]) -> tuple[list[str], list[tuple[str, str]]]:
+        return validate_files(
+            paths,
+            min_size=self._min_size,
+            extensions=self._accepted_exts,
+            rules_by_extension=self._validation_rules,
+        )
 
     # ── Drag & Drop 이벤트 ────────────────────────
 
@@ -337,8 +362,11 @@ class FileDropZone(QFrame):
                 if ext in self._accepted_exts:
                     paths.append(path)
 
-        if paths:
-            self.files_dropped.emit(paths)
+        valid_paths, errors = self.validate_paths(paths)
+        if errors:
+            self._show_validation_errors(errors)
+        if valid_paths:
+            self.files_dropped.emit(valid_paths)
             self._drop_bounce()
 
     def _drop_bounce(self):
@@ -376,8 +404,11 @@ class FileDropZone(QFrame):
             filt = "All Files (*)"
 
         paths, _ = QFileDialog.getOpenFileNames(self, "Select Files", "", filt)
-        if paths:
-            self.files_dropped.emit(paths)
+        valid_paths, errors = self.validate_paths(paths)
+        if errors:
+            self._show_validation_errors(errors)
+        if valid_paths:
+            self.files_dropped.emit(valid_paths)
 
     # ── 스타일 / 시각 효과 ────────────────────────
 
@@ -590,3 +621,9 @@ class FileDropZone(QFrame):
         if not self._accepted_exts:
             return ""
         return " ".join(sorted(self._accepted_exts))
+
+    def _show_validation_errors(self, errors: list[tuple[str, str]]) -> None:
+        preview = "\n".join(message for _, message in errors[:3])
+        if len(errors) > 3:
+            preview += f"\n... 외 {len(errors) - 3}건"
+        QMessageBox.warning(self, "파일 확인", preview)

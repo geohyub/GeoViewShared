@@ -10,10 +10,10 @@ from __future__ import annotations
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy,
 )
-from PySide6.QtCore import Qt
 
 from geoview_pyside6.constants import Space
 from geoview_pyside6.effects import reveal_widget, stagger_reveal
+from geoview_pyside6.surface_roles import harden_theme_surfaces
 
 
 class DashboardTemplate(QWidget):
@@ -38,8 +38,7 @@ class DashboardTemplate(QWidget):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, False)
-        self.setStyleSheet("background: transparent;")
+        harden_theme_surfaces(self)
         self._revealed_once = False
 
         root = QVBoxLayout(self)
@@ -163,3 +162,6 @@ class DashboardTemplate(QWidget):
         ):
             if widget is not None:
                 reveal_widget(widget, offset_y=offset, duration_ms=duration)
+
+    def refresh_theme(self) -> None:
+        harden_theme_surfaces(self)

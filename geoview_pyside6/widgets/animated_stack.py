@@ -1,17 +1,17 @@
 """
 GeoView PySide6 -- Animated Stacked Widget
 ============================================
-패널 전환 시 다양한 애니메이션을 제공하는 QStackedWidget.
+패널 전환 시 과하지 않은 애니메이션을 제공하는 QStackedWidget.
 
-- fade (기본): 페이드 크로스 전환
-- forward: 새 패널이 우측에서 슬라이드 인
-- back: 새 패널이 좌측에서 슬라이드 인
+- fade (기본): 이전 패널 스냅샷이 조용히 사라지는 페이드
+- forward/back: 방향 입력은 유지하되 실제 전환은 정적인 fade-through
 """
 
-from PySide6.QtWidgets import QStackedWidget, QGraphicsOpacityEffect, QWidget
+from PySide6.QtWidgets import (
+    QStackedWidget, QGraphicsOpacityEffect, QWidget, QLabel,
+)
 from PySide6.QtCore import (
-    QPropertyAnimation, QSequentialAnimationGroup, QEasingCurve,
-    QParallelAnimationGroup, Qt, Slot, QPoint,
+    QPropertyAnimation, QEasingCurve, QParallelAnimationGroup, Qt,
 )
 
 
@@ -20,8 +20,8 @@ class AnimatedStackedWidget(QStackedWidget):
 
     direction 옵션:
     - "fade" (기본값): 페이드 아웃 -> 교체 -> 페이드 인
-    - "forward": 새 패널이 오른쪽에서 슬라이드 인
-    - "back": 새 패널이 왼쪽에서 슬라이드 인
+    - "forward": 정적인 fade-through 전환
+    - "back": 정적인 fade-through 전환
     """
 
     def __init__(self, duration: int = 200, parent=None):
@@ -50,7 +50,7 @@ class AnimatedStackedWidget(QStackedWidget):
             return
 
         if direction in {"forward", "back"} and self.width() > 0:
-            self._slide_transition(widget, direction, actual_duration)
+            self._fade_through_transition(widget, actual_duration)
         else:
             self._fade_transition(widget, actual_duration)
 
@@ -59,129 +59,76 @@ class AnimatedStackedWidget(QStackedWidget):
     # ──────────────────────────────────────────
 
     def _fade_transition(self, new_widget: QWidget, duration: int):
-        """페이드 아웃 -> 교체 -> 페이드 인 전환."""
-        self._animating = True
-        old_widget = self.currentWidget()
-
-        # Opacity effects
-        old_effect = QGraphicsOpacityEffect(old_widget)
-        old_widget.setGraphicsEffect(old_effect)
-        old_effect.setOpacity(1.0)
-
-        new_effect = QGraphicsOpacityEffect(new_widget)
-        new_widget.setGraphicsEffect(new_effect)
-        new_effect.setOpacity(0.0)
-
-        # Fade out old
-        fade_out = QPropertyAnimation(old_effect, b"opacity")
-        fade_out.setDuration(duration // 2)
-        fade_out.setStartValue(1.0)
-        fade_out.setEndValue(0.0)
-        fade_out.setEasingCurve(QEasingCurve.Type.InCubic)
-
-        # Fade in new
-        fade_in = QPropertyAnimation(new_effect, b"opacity")
-        fade_in.setDuration(duration // 2)
-        fade_in.setStartValue(0.0)
-        fade_in.setEndValue(1.0)
-        fade_in.setEasingCurve(QEasingCurve.Type.OutCubic)
-
-        # Sequence: fade out -> switch -> fade in
-        self._anim_group = QSequentialAnimationGroup(self)
-
-        fade_out.finished.connect(lambda: self.setCurrentWidget(new_widget))
-        self._anim_group.addAnimation(fade_out)
-        self._anim_group.addAnimation(fade_in)
-
-        def _on_finished():
-            self._animating = False
-            # Clean up effects to avoid interference
-            old_widget.setGraphicsEffect(None)
-            new_widget.setGraphicsEffect(None)
-
-        self._anim_group.finished.connect(_on_finished)
-        self._anim_group.start()
+        """이전 패널 스냅샷만 페이드아웃해 렌더 충돌을 피한다."""
+        self._snapshot_transition(new_widget, duration, hold_ratio=0.0)
 
     # ──────────────────────────────────────────
-    # Slide transition (forward / back)
+    # Fade-through transition (forward / back)
     # ──────────────────────────────────────────
 
-    def _slide_transition(self, new_widget: QWidget, direction: str, duration: int):
-        """부드러운 슬라이드 + 페이드 전환.
+    def _fade_through_transition(self, new_widget: QWidget, duration: int):
+        """사이드바 전환용 정적인 fade-through.
 
-        forward: 새 패널이 오른쪽에서 살짝 슬라이드 인 (15% offset).
-        back:    새 패널이 왼쪽에서 살짝 슬라이드 인.
-        이전 패널은 제자리에서 페이드 아웃만.
+        새 패널은 제자리에서 서서히 들어오고, 이전 패널만 조용히 걷힌다.
+        """
+        self._snapshot_transition(new_widget, duration, hold_ratio=0.35)
+
+    def _snapshot_transition(self, new_widget: QWidget, duration: int, hold_ratio: float):
+        """Fade an overlay snapshot of the old panel instead of the live widget tree.
+
+        Applying QGraphicsOpacityEffect to full panel trees can trigger QPainter warnings
+        when child widgets already use their own effects or custom painting. A lightweight
+        snapshot overlay keeps the transition clean without nesting effects on the page.
         """
         self._animating = True
         old_widget = self.currentWidget()
-        w = self.width()
+        if old_widget is None:
+            self.setCurrentWidget(new_widget)
+            self._animating = False
+            return
 
-        # 짧은 오프셋 (15%) — 과하지 않게
-        offset = int(w * 0.15)
-        if direction == "forward":
-            new_start_x = offset
-            old_end_x = 0  # 이전 패널은 이동 안 함
-        else:  # back
-            new_start_x = -offset
-            old_end_x = 0
+        snapshot = old_widget.grab()
+        if snapshot.isNull():
+            self.setCurrentWidget(new_widget)
+            self._animating = False
+            return
 
-        # 새 위젯을 시작 위치에 배치하고 보이게
+        overlay = QLabel(self)
+        overlay.setObjectName("stackTransitionOverlay")
+        overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        overlay.setPixmap(snapshot)
+        overlay.setGeometry(old_widget.geometry())
+
+        self.setCurrentWidget(new_widget)
         new_widget.show()
         new_widget.raise_()
-        origin_pos = old_widget.pos()
-        new_widget.move(origin_pos.x() + new_start_x, origin_pos.y())
 
-        # 이전 위젯을 현재 위젯으로 유지하면서 슬라이드 시작
-        # (setCurrentWidget은 완료 후 호출)
+        overlay.show()
+        overlay.raise_()
 
-        # Opacity effects for smooth entrance
-        old_opacity = QGraphicsOpacityEffect(old_widget)
-        old_widget.setGraphicsEffect(old_opacity)
-        old_opacity.setOpacity(1.0)
+        opacity = QGraphicsOpacityEffect(overlay)
+        overlay.setGraphicsEffect(opacity)
+        opacity.setOpacity(1.0)
 
-        new_opacity = QGraphicsOpacityEffect(new_widget)
-        new_widget.setGraphicsEffect(new_opacity)
-        new_opacity.setOpacity(0.0)
+        fade = QPropertyAnimation(opacity, b"opacity", self)
+        fade.setDuration(duration)
+        fade.setStartValue(1.0)
+        if hold_ratio > 0:
+            fade.setKeyValueAt(max(0.0, min(0.9, hold_ratio)), 1.0)
+        fade.setEndValue(0.0)
+        fade.setEasingCurve(QEasingCurve.Type.OutCubic)
 
-        # -- Parallel animation group --
         group = QParallelAnimationGroup(self)
-
-        # Old widget fades out (no slide, just disappear)
-        old_fade = QPropertyAnimation(old_opacity, b"opacity")
-        old_fade.setDuration(duration)
-        old_fade.setStartValue(1.0)
-        old_fade.setEndValue(0.0)
-        old_fade.setEasingCurve(QEasingCurve.Type.InCubic)
-        group.addAnimation(old_fade)
-
-        # New widget slides in
-        new_slide = QPropertyAnimation(new_widget, b"pos")
-        new_slide.setDuration(duration)
-        new_slide.setStartValue(QPoint(origin_pos.x() + new_start_x, origin_pos.y()))
-        new_slide.setEndValue(origin_pos)
-        new_slide.setEasingCurve(QEasingCurve.Type.OutCubic)
-        group.addAnimation(new_slide)
-
-        # New widget fades in
-        new_fade = QPropertyAnimation(new_opacity, b"opacity")
-        new_fade.setDuration(duration)
-        new_fade.setStartValue(0.0)
-        new_fade.setEndValue(1.0)
-        new_fade.setEasingCurve(QEasingCurve.Type.OutCubic)
-        group.addAnimation(new_fade)
-
+        group.addAnimation(fade)
         self._anim_group = group
+        self._transition_overlay = overlay
 
         def _on_finished():
             self._animating = False
-            # Switch stacked widget current
-            self.setCurrentWidget(new_widget)
-            # Reset positions and effects
-            old_widget.move(origin_pos)
-            new_widget.move(origin_pos)
-            old_widget.setGraphicsEffect(None)
-            new_widget.setGraphicsEffect(None)
+            overlay.setGraphicsEffect(None)
+            overlay.hide()
+            overlay.deleteLater()
+            self._transition_overlay = None
 
         group.finished.connect(_on_finished)
         group.start()

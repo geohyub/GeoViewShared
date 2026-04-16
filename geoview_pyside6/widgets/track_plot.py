@@ -96,7 +96,7 @@ _TEXTS = {
         "points": "Points",
         "score": "Score",
         "grade": "Grade",
-        "hint": "Click a line to select it.",
+        "hint": "라인을 클릭하면 선택됩니다.",
         "legend_line": "Lines",
         "legend_score": "QC Score",
 
@@ -116,7 +116,7 @@ _TEXTS = {
         "points": "Total Points",
         "score": "Score",
         "grade": "Grade",
-        "hint": "Click a line to navigate to its analysis.",
+        "hint": "Click a line to select it.",
         "legend_line": "Lines",
         "legend_score": "QC Score",
     },
@@ -135,7 +135,7 @@ _TEXTS["ko"].update({
     "points": "Pts",
     "score": "Score",
     "grade": "Grade",
-    "hint": "Click a line to select.",
+    "hint": "라인을 클릭하면 선택됩니다.",
     "legend_line": "Lines",
     "legend_score": "QC Score",
 })
@@ -362,6 +362,7 @@ class TrackPlot(QWidget):
     """
 
     line_selected = Signal(object)  # line_id can be str or int
+    line_activated = Signal(object)  # line_id double-click / open intent
     lines_selected = Signal(list)   # list of line_ids (multi-select)
 
     COLOR_MODE_LINE = "line"
@@ -383,6 +384,7 @@ class TrackPlot(QWidget):
         self._selected_ids: set = set()  # multi-select set
         self._multi_select = multi_select
         self._auto_range_on_select = False  # never zoom on click
+        self._hint_text_override: str | None = None
 
         self._show_legend = show_legend
         self._show_toolbar = show_toolbar
@@ -475,7 +477,7 @@ class TrackPlot(QWidget):
 
         # Hint bar
         if self._show_hint:
-            self._hint_label = QLabel(_ui("hint"))
+            self._hint_label = QLabel(self._current_hint_text())
             self._hint_label.setObjectName("trackHint")
             root.addWidget(self._hint_label)
         else:
@@ -580,7 +582,7 @@ class TrackPlot(QWidget):
         if self._btn_score:
             self._btn_score.setText(_ui("mode_score"))
         if self._hint_label:
-            self._hint_label.setText(_ui("hint"))
+            self._hint_label.setText(self._current_hint_text())
         self._empty.retranslate()
 
         plot_item = self._plot_widget.getPlotItem()
@@ -628,6 +630,8 @@ class TrackPlot(QWidget):
     def clear(self):
         """Remove all routes and reset to empty state."""
         self._routes.clear()
+        self._hovered_route = None
+        self.clear_selection()
         self._clear_plot_items()
         self._stack.setCurrentIndex(0)
         if self._stats_label:
@@ -649,6 +653,12 @@ class TrackPlot(QWidget):
         self._selected_id = line_ids[0] if line_ids else None
         self._apply_selection_highlight()
 
+    def clear_selection(self):
+        """Clear current selection and remove any highlight."""
+        self._selected_id = None
+        self._selected_ids.clear()
+        self._apply_selection_highlight()
+
     def get_selected_ids(self) -> list:
         """Return list of currently selected line IDs."""
         if self._multi_select:
@@ -658,6 +668,12 @@ class TrackPlot(QWidget):
     def set_color_mode(self, mode: str):
         """Set color mode externally: 'line' or 'score'."""
         self._set_color_mode(mode)
+
+    def set_hint_text(self, text: str | None):
+        """Override the footer hint text shown below the plot."""
+        self._hint_text_override = text
+        if self._hint_label:
+            self._hint_label.setText(self._current_hint_text())
 
     @property
     def routes(self) -> list[LineRoute]:
@@ -776,6 +792,9 @@ class TrackPlot(QWidget):
         if self._routes:
             self._render_routes(fit_view=False)
 
+    def _current_hint_text(self) -> str:
+        return self._hint_text_override or _ui("hint")
+
     # ----------------------------------------------------------------
     # Legend
     # ----------------------------------------------------------------
@@ -872,6 +891,7 @@ class TrackPlot(QWidget):
 
         line_id = self._hovered_route.line_id
         modifiers = event.modifiers() if hasattr(event, 'modifiers') else Qt.KeyboardModifier.NoModifier
+        is_double = bool(event.double()) if hasattr(event, "double") else False
 
         if self._multi_select and modifiers & Qt.KeyboardModifier.ControlModifier:
             # Ctrl+click: toggle selection
@@ -891,3 +911,5 @@ class TrackPlot(QWidget):
             self.line_selected.emit(line_id)
             if self._multi_select:
                 self.lines_selected.emit([line_id])
+            if is_double:
+                self.line_activated.emit(line_id)

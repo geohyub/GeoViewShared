@@ -167,7 +167,8 @@ class _HoverLiftFilter(QObject):
         self._hover_offset = self._base_offset + self._lift_px  # 2 -> 4
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
-        if obj is not self._widget:
+        widget = getattr(self, "_widget", None)
+        if widget is None or obj is not widget:
             return False
 
         if event.type() == QEvent.Type.Enter:

@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+from typing import Callable
+
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QCheckBox, QWidget, QGridLayout, QFrame, QGraphicsOpacityEffect,
@@ -60,6 +62,12 @@ class WelcomeDialog(QDialog):
         layout = QVBoxLayout(container)
         layout.setContentsMargins(Space.XXL, Space.XXL, Space.XXL, Space.XL)
         layout.setSpacing(Space.LG)
+
+        # Wave 6 Week 21 X1: content layout reference for add_section().
+        # Pure addition — stores reference only, does not alter existing behavior.
+        self._content_layout = layout
+        self._sections_insert_index = 1  # after header, before feature grid
+        self._sections: list[QWidget] = []
 
         # ── Header: App name + version ──
         header_layout = QVBoxLayout()
@@ -241,3 +249,96 @@ class WelcomeDialog(QDialog):
         """Get Started 버튼 클릭 핸들러."""
         self.dont_show_again = self._checkbox.isChecked()
         self.accept()
+
+    # ------------------------------------------------------------------
+    # Wave 6 Week 21 X1 — add_section() API (pure addition)
+    # ------------------------------------------------------------------
+    #
+    # 목적: CPTPrep 과 같은 앱이 "Resume last session / Recent projects /
+    # Import presets" 같은 추가 섹션을 WelcomeDialog 에 붙일 수 있게 한다.
+    #
+    # 규율 (wave6_b1_cptprep_plan.md §0.3):
+    # - 기존 모든 호출자 (features / get_started 등) 동작 변경 금지.
+    # - 본 API 는 pure addition: 호출하지 않으면 기존 동작 그대로.
+    # - 섹션은 내부 content layout 의 header 아래, feature grid 위에 삽입.
+
+    def add_section(
+        self,
+        title: str,
+        items: list[dict] | None = None,
+        on_activate: Callable[[str], None] | None = None,
+    ) -> QFrame:
+        """섹션을 추가한다 (header 아래, feature grid 위).
+
+        Args:
+            title: 섹션 제목 (예: "Resume last session", "Recent projects").
+            items: 아이템 목록. 각 아이템은 dict:
+                - "title": 표시 이름 (필수)
+                - "subtitle": 부제 (선택)
+                - "badge": 상태 뱃지 (선택)
+                - "key": on_activate 콜백 파라미터 (선택, 없으면 title 사용)
+            on_activate: 아이템 클릭 시 호출. 인자: 아이템 "key" (or title).
+
+        Returns:
+            생성된 섹션 QFrame. 테스트/스타일링용 참조.
+        """
+        section = QFrame()
+        section.setObjectName("welcomeSection")
+        section.setStyleSheet(
+            f"#welcomeSection {{ background: transparent; border: none; }}"
+        )
+
+        section_layout = QVBoxLayout(section)
+        section_layout.setContentsMargins(0, 0, 0, 0)
+        section_layout.setSpacing(Space.XS)
+
+        title_label = QLabel(title)
+        title_label.setStyleSheet(
+            f"color: {c().DIM}; font-size: {Font.XS}px; "
+            f"font-weight: {Font.SEMIBOLD}; background: transparent;"
+        )
+        section_layout.addWidget(title_label)
+
+        for item in items or []:
+            row = self._make_section_item(item, on_activate)
+            section_layout.addWidget(row)
+
+        self._content_layout.insertWidget(self._sections_insert_index, section)
+        self._sections_insert_index += 1
+        self._sections.append(section)
+        return section
+
+    def _make_section_item(
+        self,
+        item: dict,
+        on_activate: Callable[[str], None] | None,
+    ) -> QPushButton:
+        title = item.get("title", "(untitled)")
+        subtitle = item.get("subtitle", "")
+        badge = item.get("badge", "")
+        key = item.get("key", title)
+
+        label_text = title
+        if subtitle:
+            label_text = f"{title}   {subtitle}"
+        if badge:
+            label_text = f"{label_text}   [{badge}]"
+
+        btn = QPushButton(label_text)
+        btn.setFlat(True)
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setFixedHeight(28)  # Track C sidebar row
+        btn.setStyleSheet(
+            f"QPushButton {{ text-align: left; padding: 4px 8px; "
+            f"background: transparent; color: {c().TEXT}; "
+            f"font-size: {Font.SM}px; border: none; }}"
+            f"QPushButton:hover {{ background: rgba(255,255,255,0.06); }}"
+        )
+        if on_activate is not None:
+            btn.clicked.connect(lambda _=False, k=key: on_activate(k))
+        return btn
+
+    @property
+    def sections(self) -> list[QFrame]:
+        """테스트용 — add_section 으로 추가된 섹션 목록."""
+        return list(self._sections)

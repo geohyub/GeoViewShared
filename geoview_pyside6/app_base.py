@@ -34,6 +34,14 @@ from geoview_pyside6.theme_aware import c
 from geoview_pyside6 import effects as _effects_mod
 from geoview_pyside6.effects import PressEffect
 from geoview_pyside6.i18n import LanguageManager
+from geoview_pyside6.runtime import (
+    create_settings,
+    restore_window_state,
+    run_with_crash_dialog,
+    save_window_state,
+    setup_logging as _setup_runtime_logging,
+)
+from geoview_pyside6.surface_roles import harden_theme_surfaces
 from geoview_pyside6.themes import apply_theme
 from geoview_pyside6.widgets.animated_stack import AnimatedStackedWidget
 
@@ -393,6 +401,7 @@ class GeoViewApp(QMainWindow):
         self._docks: dict[str, QDockWidget] = {}
         self._panel_history: list[str] = []
         self._history_index: int = -1
+        self._logger = self.setup_logging(self.APP_NAME)
 
         # Project context (opt-in, 실패해도 앱 시작에 영향 없음)
         self.project_context = None  # Optional[ProjectContext]
@@ -419,9 +428,8 @@ class GeoViewApp(QMainWindow):
         self.resize(1440, 900)
 
         # -- Restore window geometry --
-        self._settings = QSettings("GeoView", self.APP_NAME, self)
-        if self._settings.contains("geometry"):
-            self.restoreGeometry(self._settings.value("geometry"))
+        self._settings = create_settings(self.APP_NAME, self)
+        restore_window_state(self, self._settings, restore_state=False)
         # Note: windowState/dock_state restored AFTER setup_panels() to include dock widgets
 
         # Central widget
@@ -530,11 +538,7 @@ class GeoViewApp(QMainWindow):
             self.sidebar.set_active_panel(last_panel)
 
         # Restore window/dock state (after panels registered)
-        _ds = self._settings.value("dock_state")
-        if _ds:
-            self.restoreState(_ds)
-        elif self._settings.contains("windowState"):
-            self.restoreState(self._settings.value("windowState"))
+        restore_window_state(self, self._settings, restore_geometry=False)
 
         # Command palette + keyboard shortcuts
         self._setup_shortcuts()
@@ -548,6 +552,7 @@ class GeoViewApp(QMainWindow):
 
         # Dark titlebar (Windows 10/11)
         self._apply_dark_titlebar()
+        self._logger.info("%s initialized", self.APP_NAME)
 
     def setup_panels(self):
         """서브클래스에서 오버라이드. add_panel()을 호출하여 패널 등록."""
@@ -557,6 +562,7 @@ class GeoViewApp(QMainWindow):
         """사이드바 버튼 + 콘텐츠 패널 등록. icon_or_text: QIcon 또는 유니코드 str."""
         self._panels[panel_id] = widget
         self._panel_order.append(panel_id)
+        harden_theme_surfaces(widget)
         self.content_stack.addWidget(widget)
         self.sidebar.add_button(icon_or_text, label, panel_id)
 
@@ -757,11 +763,13 @@ class GeoViewApp(QMainWindow):
         각 패널이 on_theme_changed()를 구현하면 호출됨."""
         for i in range(self.content_stack.count()):
             panel = self.content_stack.widget(i)
+            harden_theme_surfaces(panel)
             if hasattr(panel, 'on_theme_changed'):
                 try:
                     panel.on_theme_changed()
                 except Exception:
                     pass
+            harden_theme_surfaces(panel)
         # Dock 위젯 테마 갱신
         for dock_id, dock in self._docks.items():
             widget = dock.widget() if dock else None
@@ -829,11 +837,14 @@ class GeoViewApp(QMainWindow):
                     confirm_text="Close"):
                 event.ignore()
                 return
-        self._settings.setValue("geometry", self.saveGeometry())
-        self._settings.setValue("dock_state", self.saveState())
+        save_window_state(self, self._settings)
         self._settings.setValue("sidebar_width", self.sidebar.width())
         self._settings.setValue("sidebar_collapsed", self.sidebar._collapsed)
         super().closeEvent(event)
+
+    @staticmethod
+    def setup_logging(app_name: str, level: int = logging.INFO) -> logging.Logger:
+        return _setup_runtime_logging(app_name, level=level)
 
     # ── Dirty State ──
 
@@ -989,6 +1000,7 @@ class GeoViewApp(QMainWindow):
         self._settings.setValue("last_panel", panel_id)
         panel = self._panels.get(panel_id)
         if panel:
+            harden_theme_surfaces(panel)
             # 방향성 전환: 패널 순서 기반
             direction = "fade"
             if old_panel and old_panel != panel_id:
@@ -1635,51 +1647,54 @@ class GeoViewApp(QMainWindow):
     @classmethod
     def run(cls):
         """앱 실행 헬퍼."""
-        app = QApplication(sys.argv)
+        def _launch() -> int:
+            app = QApplication.instance() or QApplication(sys.argv)
 
-        # Load fonts once per process
-        global _FONTS_LOADED
-        if not _FONTS_LOADED:
-            for font_file in (Path(__file__).parent / "fonts").rglob("*.[ot]tf"):
-                QFontDatabase.addApplicationFont(str(font_file))
-            _FONTS_LOADED = True
+            # Load fonts once per process
+            global _FONTS_LOADED
+            if not _FONTS_LOADED:
+                for font_file in (Path(__file__).parent / "fonts").rglob("*.[ot]tf"):
+                    QFontDatabase.addApplicationFont(str(font_file))
+                _FONTS_LOADED = True
 
-        # Set global default font — Wanted Sans Std: modern Korean UI font
-        default_font = QFont("Wanted Sans Std", 11)  # 11pt
-        default_font.setHintingPreference(QFont.HintingPreference.PreferFullHinting)
-        app.setFont(default_font)
+            # Set global default font — Wanted Sans Std: modern Korean UI font
+            default_font = QFont("Wanted Sans Std", 11)  # 11pt
+            default_font.setHintingPreference(QFont.HintingPreference.PreferFullHinting)
+            app.setFont(default_font)
 
-        # Show splash screen
-        splash = None
-        try:
-            from geoview_pyside6.splash import GeoViewSplash
-            splash = GeoViewSplash(cls.APP_NAME, cls.APP_VERSION, cls.CATEGORY)
-            splash.show()
-            splash.set_status("Loading fonts...")
-            splash.set_progress(0.18)
-            app.processEvents()
-        except Exception:
-            pass
+            # Show splash screen
+            splash = None
+            try:
+                from geoview_pyside6.splash import GeoViewSplash
+                splash = GeoViewSplash(cls.APP_NAME, cls.APP_VERSION, cls.CATEGORY)
+                splash.show()
+                splash.set_status("Loading fonts...")
+                splash.set_progress(0.18)
+                app.processEvents()
+            except Exception:
+                pass
 
-        if splash:
-            splash.set_status("Preparing workspace...")
-            splash.set_progress(0.34)
-            app.processEvents()
+            if splash:
+                splash.set_status("Preparing workspace...")
+                splash.set_progress(0.34)
+                app.processEvents()
 
-        window = cls()
+            window = cls()
 
-        if splash:
-            splash.set_status("Polishing interface...")
-            splash.set_progress(0.92)
-            app.processEvents()
+            if splash:
+                splash.set_status("Polishing interface...")
+                splash.set_progress(0.92)
+                app.processEvents()
 
-        window.show()
+            window.show()
 
-        if getattr(window, "pending_handoff", None):
-            QTimer.singleShot(650, window._announce_pending_handoff)
+            if getattr(window, "pending_handoff", None):
+                QTimer.singleShot(650, window._announce_pending_handoff)
 
-        if splash:
-            splash.set_status("Ready")
-            splash.finish_with_delay(window, 420)
+            if splash:
+                splash.set_status("Ready")
+                splash.finish_with_delay(window, 420)
 
-        sys.exit(app.exec())
+            return app.exec()
+
+        raise SystemExit(run_with_crash_dialog(cls.APP_NAME, _launch))
