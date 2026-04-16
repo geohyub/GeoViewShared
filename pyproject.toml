@@ -24,6 +24,8 @@ ags = ["python-ags4==1.0.0", "pyyaml>=6.0"]
 # Optional LAS format support (Week 15 A3.4 converters).
 las = ["lasio>=0.31"]
 all = ["geoview-common[gui,segy,docs,geo,ags,las]"]
+# Phase B Wave 6 (Week 20+) — pytest-qt for PySide6 widget tests (CPT apps).
+dev = ["pytest>=8.0", "pytest-qt>=4.5.0", "PySide6>=6.6"]
 
 [project.scripts]
 # Phase A-3 Week 15 A3.5 — AGS4 toolkit CLI

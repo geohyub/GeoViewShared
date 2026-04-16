@@ -1,7 +1,9 @@
-# Kingdom Drop — `09_kingdom/` Folder Layout (Recon)
+# Kingdom Drop — `09_kingdom/` Folder Layout
 
-> **Status:** Phase A-4 Week 16 reconnaissance draft. Used as input
-> for Week 17–18 A4.4 implementation. References:
+> **Status:** Phase A-4 Week 18 — **COMPLETE**. Originally a Week 16
+> reconnaissance draft; Week 17 closed Q40-Q43 and Week 18 delivered
+> the assembly / manifest / README / atomic-drop helpers + M4 gate.
+> Layout implemented verbatim. References:
 > - `Management/HandoverPackageGenerator/profiles/generated/KFW_2026_OfECC_Geophysical.yaml`
 >   (lines 177 / 232 / 299–303 — `06_Kingdom` placeholder for SBP+UHRS)
 > - `plans/CPT_HARNESS_AND_SUITE_PLAN.md` §5.4 Phase A-4
