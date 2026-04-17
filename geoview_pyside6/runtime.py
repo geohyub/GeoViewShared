@@ -7,11 +7,110 @@ import traceback
 from pathlib import Path
 from typing import Callable
 
-from PySide6.QtCore import QSettings
+import PySide6
+from PySide6.QtCore import QCoreApplication, QSettings
 from PySide6.QtWidgets import QApplication, QMessageBox, QWidget
 
 
 _LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+
+
+# ── Qt plugin path auto-registration ──────────────────────────────
+# PyInstaller one-folder builds, portable Python distributions, and
+# machines with multiple PySide6 installs sometimes fail to locate the
+# Qt `platforms/qwindows.dll` (or `libqxcb.so` on Linux) at launch,
+# printing "This application failed to start because no Qt platform
+# plugin could be initialized" and exiting immediately.
+#
+# The canonical fix is to tell Qt exactly where the plugins directory
+# lives via QCoreApplication.addLibraryPath() BEFORE QApplication is
+# constructed. We probe the same `PySide6/plugins` directory the
+# running interpreter already imports from, so the lookup is always
+# consistent with the resolved binding.
+
+_QT_PLUGIN_PATHS_REGISTERED = False
+
+
+def _candidate_plugin_dirs() -> list[str]:
+    """Return plausible Qt plugin directories, most-preferred first.
+
+    Probes:
+    1. `<PySide6 dir>/plugins`           — the active binding
+    2. `<PySide6 dir>/Qt6/plugins`       — pip-installed wheel layout
+    3. `QT_PLUGIN_PATH` env var          — operator override
+    """
+    candidates: list[str] = []
+    try:
+        pyside_dir = Path(PySide6.__file__).resolve().parent
+    except (AttributeError, TypeError):
+        pyside_dir = None
+
+    if pyside_dir is not None:
+        for sub in ("plugins", "Qt6/plugins", "Qt/plugins"):
+            candidate = pyside_dir / sub
+            if candidate.is_dir():
+                candidates.append(str(candidate))
+
+    env_override = os.environ.get("QT_PLUGIN_PATH", "").strip()
+    if env_override:
+        for part in env_override.split(os.pathsep):
+            part = part.strip()
+            if part and Path(part).is_dir():
+                candidates.append(part)
+
+    # Deduplicate preserving order.
+    seen: set[str] = set()
+    unique: list[str] = []
+    for c in candidates:
+        if c not in seen:
+            seen.add(c)
+            unique.append(c)
+    return unique
+
+
+def register_qt_plugin_paths(force: bool = False) -> list[str]:
+    """Ensure Qt can find its platform plugins.
+
+    Idempotent: repeated calls are no-ops unless `force=True`.
+    Returns the list of plugin directories registered on this call
+    (useful for tests and log output).
+
+    Call this BEFORE creating QApplication. `run_with_crash_dialog`
+    calls it for you. Standalone scripts that build QApplication
+    directly should call it themselves near the top of main().
+    """
+    global _QT_PLUGIN_PATHS_REGISTERED
+    if _QT_PLUGIN_PATHS_REGISTERED and not force:
+        return []
+
+    existing: set[str] = set()
+    try:
+        for entry in QCoreApplication.libraryPaths():
+            existing.add(str(Path(entry).resolve()))
+    except Exception:
+        existing = set()
+
+    added: list[str] = []
+    for path in _candidate_plugin_dirs():
+        resolved = str(Path(path).resolve())
+        if resolved in existing:
+            continue
+        QCoreApplication.addLibraryPath(path)
+        existing.add(resolved)
+        added.append(path)
+
+    _QT_PLUGIN_PATHS_REGISTERED = True
+    return added
+
+
+# Register at import time — this runs before any QApplication() call
+# as long as the importing app imports `geoview_pyside6` (or this
+# module) before instantiating Qt objects, which every GeoView entry
+# point already does.
+try:
+    register_qt_plugin_paths()
+except Exception:  # pragma: no cover — never fatal at import
+    pass
 
 
 def _configure_logger(
@@ -178,6 +277,10 @@ def save_window_state(
 
 
 def run_with_crash_dialog(app_name: str, callback: Callable[[], int | None]) -> int:
+    # Idempotent — import-time registration already ran, but calling
+    # again guards against apps that reset QCoreApplication.libraryPaths()
+    # in custom setup code.
+    register_qt_plugin_paths()
     logger = setup_logging(app_name)
     install_exception_hook(app_name)
     try:
