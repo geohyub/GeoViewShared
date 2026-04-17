@@ -248,9 +248,19 @@ class WarmBeige:
 # ════════════════════════════════════════════
 
 class Font:
-    # Font families — Pretendard: modern Korean UI font (fallback chain)
-    SANS = "Pretendard, 'Wanted Sans Std', -apple-system, 'Segoe UI', sans-serif"
-    EN   = "Pretendard, 'Wanted Sans Std', -apple-system, 'Segoe UI', sans-serif"
+    # Font families — Pretendard: modern Korean UI font (fallback chain).
+    # The chain MUST include a Korean-capable fallback that is always
+    # available on the target OS — Malgun Gothic on Windows 10+,
+    # Noto Sans CJK on modern Linux, Apple SD Gothic Neo on macOS —
+    # otherwise placeholder text in QLineEdit widgets renders as tofu
+    # boxes (▢▢▢▢) on machines that don't ship Pretendard (observed
+    # in TidalWorks API 설정 panel, 2026-04-17 / W1).
+    SANS = (
+        "Pretendard, 'Wanted Sans Std', 'Apple SD Gothic Neo', "
+        "'Malgun Gothic', 'Noto Sans CJK KR', 'Noto Sans KR', "
+        "-apple-system, 'Segoe UI', sans-serif"
+    )
+    EN   = SANS
     MONO = "'JetBrains Mono', Consolas, 'Cascadia Code', monospace"
 
     # Sizes (px) — 업계 표준 스케일 (Inter/Geist 기준)
