@@ -327,6 +327,15 @@ class Accent:
 
 
 # ════════════════════════════════════════════
+# Domain identity palette (reuse across apps)
+# ════════════════════════════════════════════
+
+# "Marine Chart Table" teal — NavQC scrubber + chart-table surface accents.
+MARITIME_TEAL      = "#0D7377"
+MARITIME_TEAL_RGB  = (13, 115, 119)
+
+
+# ════════════════════════════════════════════
 # Opacity (hex suffix for color strings)
 # ════════════════════════════════════════════
 
