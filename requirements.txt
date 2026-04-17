@@ -1,0 +1,29 @@
+# geoview_common / geoview_pyside6 — shared runtime pins.
+#
+# Apps may reference this file with:
+#     -r ../../_shared/requirements.txt
+# from their own requirements.txt to inherit the pinned versions.
+#
+# PySide6 target pin
+# ------------------
+# The portfolio targets PySide6 6.7.0 LTS because:
+#   - 6.7 is the latest long-term-support line (6.6 EOL, 6.8+ rolling).
+#   - 6.7 ships all of: QAction-moved-to-QtGui, native accessibility,
+#     modern QML tooling (not used here but tested).
+#   - Windows installers built against 6.7 run on Win10 21H2 and later.
+#
+# NOTE — 2026-04-17: the dev machine currently has PySide6 6.11.0
+# installed. We are intentionally NOT force-downgrading. The pin below
+# represents the target version that installer builds and CI should
+# use. Phase B W34+ contains the actual rollout (rebuild each app's
+# PyInstaller spec against a 6.7.0 venv).
+#
+# Qt plugin path discovery (geoview_pyside6/runtime.py,
+# register_qt_plugin_paths) is version-agnostic so upgrades/downgrades
+# inside this range are safe at runtime.
+
+PySide6==6.7.0
+pyqtgraph>=0.13,<0.14
+numpy>=1.24
+matplotlib>=3.7,<4
+openpyxl>=3.1
