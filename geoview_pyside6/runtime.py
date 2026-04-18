@@ -276,13 +276,29 @@ def save_window_state(
         settings.setValue("dock_state", state)
 
 
-def run_with_crash_dialog(app_name: str, callback: Callable[[], int | None]) -> int:
+def run_with_crash_dialog(
+    app_name: str,
+    callback: Callable[[], int | None],
+    *,
+    version: str = "dev",
+) -> int:
     # Idempotent — import-time registration already ran, but calling
     # again guards against apps that reset QCoreApplication.libraryPaths()
     # in custom setup code.
     register_qt_plugin_paths()
     logger = setup_logging(app_name)
     install_exception_hook(app_name)
+
+    # Phase B W34: opt-in Sentry error reporting. No-op when
+    # <APP>_SENTRY_DSN / GEOVIEW_SENTRY_DSN is unset OR sentry_sdk
+    # isn't installed — offline vessel deployments stay unaffected.
+    try:
+        from geoview_pyside6.observability import maybe_init_sentry
+        if maybe_init_sentry(app_name=app_name, version=version):
+            logger.info("Sentry error reporting enabled (%s@%s)", app_name, version)
+    except Exception:
+        logger.debug("Sentry init skipped (import or init error)", exc_info=True)
+
     try:
         result = callback()
     except Exception:
