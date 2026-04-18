@@ -2,6 +2,13 @@
 GeoView PySide6 — Shared Widgets
 ==================================
 24개 프로그램이 공유하는 재사용 가능한 위젯 컬렉션.
+
+BL-20260418-027 cold-start optimisation (Phase B W35): pyqtgraph is
+*expensive* to import (~290 ms). Widgets that depend on it
+(`TrackPlot`, `LineRoute`) are now resolved via PEP 562 module-level
+``__getattr__`` so `from geoview_pyside6.widgets import ...` users
+still work, but apps that never touch track_plot don't pay for
+pyqtgraph at import time.
 """
 
 from geoview_pyside6.widgets.kpi_card import KPICard
@@ -26,8 +33,32 @@ from geoview_pyside6.widgets.animated_tab_bar import AnimatedTabBar
 from geoview_pyside6.widgets.settings_panel import SettingsPanel
 from geoview_pyside6.widgets.notification_center import NotificationCenter
 from geoview_pyside6.widgets.success_overlay import SuccessOverlay
-from geoview_pyside6.widgets.track_plot import TrackPlot, LineRoute
 from geoview_pyside6.utils import ElidedLabel
+
+
+# Deferred-import names. Resolved on first attribute access via
+# __getattr__; the pyqtgraph cost only materialises when a caller
+# actually reaches for TrackPlot/LineRoute.
+_LAZY_NAMES = {
+    "TrackPlot":  ("geoview_pyside6.widgets.track_plot", "TrackPlot"),
+    "LineRoute":  ("geoview_pyside6.widgets.track_plot", "LineRoute"),
+}
+
+
+def __getattr__(name):
+    if name in _LAZY_NAMES:
+        import importlib
+        mod_path, attr = _LAZY_NAMES[name]
+        mod = importlib.import_module(mod_path)
+        value = getattr(mod, attr)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module 'geoview_pyside6.widgets' has no attribute {name!r}")
+
+
+def __dir__():
+    return sorted(list(globals().keys()) + list(_LAZY_NAMES.keys()))
+
 
 __all__ = [
     "KPICard", "StatusBadge", "GVTableView", "FileDropZone",
@@ -39,6 +70,6 @@ __all__ = [
     "Breadcrumb", "BreadcrumbBar", "AnimatedTabBar",
     "SettingsPanel", "NotificationCenter",
     "SuccessOverlay",
-    "TrackPlot", "LineRoute",
+    "TrackPlot", "LineRoute",    # lazy — see __getattr__
     "ElidedLabel",
 ]
