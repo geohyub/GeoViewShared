@@ -554,6 +554,13 @@ class GeoViewApp(QMainWindow):
         self._apply_dark_titlebar()
         self._logger.info("%s initialized", self.APP_NAME)
 
+        # 자동 스크린샷 모드 (capture_harness 환경변수 활성 시)
+        try:
+            from geoview_pyside6._screenshot import maybe_screenshot_mode
+            maybe_screenshot_mode(self)
+        except Exception:
+            pass
+
     def setup_panels(self):
         """서브클래스에서 오버라이드. add_panel()을 호출하여 패널 등록."""
         pass
@@ -1694,6 +1701,24 @@ class GeoViewApp(QMainWindow):
             if splash:
                 splash.set_status("Ready")
                 splash.finish_with_delay(window, 420)
+
+            # Phase B W35 Track C: benchmark harness auto-quit. When
+            # GEOVIEW_AUTO_QUIT_MS=<int> is set, schedule app.quit()
+            # that many milliseconds after window.show(). Lets
+            # perf_benchmark.py measure full "module import + window
+            # visible + event loop 1 tick" wall time without needing
+            # per-app cooperation.
+            import os as _os
+            _autoq = _os.environ.get("GEOVIEW_AUTO_QUIT_MS", "").strip()
+            if _autoq.isdigit():
+                QTimer.singleShot(int(_autoq), app.quit)
+                # First-paint marker — flushed immediately so the
+                # harness can timestamp window readiness distinctly
+                # from the auto-quit.
+                QTimer.singleShot(
+                    0,
+                    lambda: (print("GEOVIEW_WINDOW_READY", flush=True), None)[1],
+                )
 
             return app.exec()
 
