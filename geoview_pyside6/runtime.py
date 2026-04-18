@@ -188,7 +188,20 @@ def setup_logging(app_name: str, level: int = logging.INFO) -> logging.Logger:
     _configure_logger(root_logger, log_file=log_file, level=level, propagate=True)
 
     logger = logging.getLogger(app_name)
-    return _configure_logger(logger, log_file=log_file, level=level, propagate=False)
+    _configure_logger(logger, log_file=log_file, level=level, propagate=False)
+
+    # Phase B W34 Track 3 — JSON sidecar log for Grafana Loki / Promtail
+    # ingest. No-op if the filesystem is read-only; the human-readable
+    # log above is still written either way.
+    try:
+        from geoview_pyside6.logging import attach_json_sidecar
+        attach_json_sidecar(root_logger, app_name, level=level)
+        attach_json_sidecar(logger, app_name, level=level)
+    except Exception:
+        # Never block startup on observability side-effects.
+        pass
+
+    return logger
 
 
 def install_exception_hook(app_name: str) -> None:
